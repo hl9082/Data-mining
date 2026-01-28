@@ -1,3 +1,7 @@
+"""
+Author: Huy Le (hl9082)
+Assignment: 1
+"""
 import pandas as pd
 import numpy as np
 import random
