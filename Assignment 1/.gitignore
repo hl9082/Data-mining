@@ -1,0 +1,5 @@
+venv/
+*.csv
+# Ignore compiled python files
+__pycache__/
+*.pyc
