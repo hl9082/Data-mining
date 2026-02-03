@@ -241,7 +241,7 @@ def find_best_split(records, attributes, target_name):
             best_gini = gini
             best_attr = attr
             
-    return best_attr
+    return best_attr, best_gini
 
 def build_tree(records, attributes, target_name, depth=0):
     """
@@ -254,7 +254,6 @@ def build_tree(records, attributes, target_name, depth=0):
     @return node - The root node of the constructed tree (or subtree).
     """
 
-    best_gini = float('inf')
 
     # Helper indentation for printing
     indent = "   | " * depth
@@ -273,7 +272,7 @@ def build_tree(records, attributes, target_name, depth=0):
         return LeafNode(get_majority_class(records, target_name))
 
     # --- RECURSION ---
-    best_attr = find_best_split(records, attributes, target_name)
+    best_attr, best_gini = find_best_split(records, attributes, target_name)
     
     # Edge Case: If no split improves anything (or all Gini=1.0), stop
     if best_attr is None:
