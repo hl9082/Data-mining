@@ -62,25 +62,60 @@ def load_and_clean_data():
 # 3. PREPROCESSING FUNCTIONS
 # ==========================================
 
-def discretize_feature(dataframe, column_name, num_bins=4):
+def manual_equal_freq_discretize(dataframe, col, num_bins=4):
     """
-    Converts a continuous numerical attribute into ordinal categories using
-    equal-frequency binning (quantiles). Rubric Requirement: Exactly 4 bins.
+    Manually implements Equal-Frequency (Quantile) binning without using pandas.qcut.
+    It calculates percentile thresholds using NumPy and applies them to create bins.
+    
+    Constraint: "Avoid using pandas.qcut for discretization."
+    Constraint: "Discretization should be static... before you start building your decision tree."
 
     @param dataframe - The pandas DataFrame containing the data.
-    @param column_name - The name of the column to discretize.
+    @param col - The name of the continuous column to discretize.
     @param num_bins - The number of bins to create (default is 4).
-    @return dataframe - The DataFrame with the specified column modified.
+    @return dataframe - The DataFrame with the continuous column replaced by bin indices (0..3).
     """
-    # qcut = Equal Frequency (Quantile Cut)
-    # duplicates='drop' handles edge cases where multiple people have identical values
-    dataframe[column_name] = pd.qcut(dataframe[column_name], q=num_bins, labels=False, duplicates='drop')
+    # 1. Get valid data to calculate thresholds (ignore NaNs for threshold calc)
+    valid_data = dataframe[col].dropna().values
+    
+    # 2. Calculate thresholds (Quantiles)
+    # linspace(0, 100, 5) -> [0.0, 25.0, 50.0, 75.0, 100.0]
+    quantiles = np.linspace(0, 100, num_bins + 1)
+    bins = np.percentile(valid_data, quantiles)
+    
+    # Ensure unique bin edges (handles edge case where many values are identical)
+    bins = np.unique(bins)
+    
+    # 3. Function to map a single value to a bin index
+    def assign_bin(val):
+        if pd.isna(val): return np.nan
+        # Find which bucket 'val' falls into
+        for i in range(len(bins) - 1):
+            # Check if val is in range [left, right]
+            lower = bins[i]
+            upper = bins[i+1]
+            
+            # Logic: inclusive lower, exclusive upper, but include max in the very last bin
+            if i == len(bins) - 2: # Last bin
+                if lower <= val <= upper: return i
+            else:
+                if lower <= val < upper: return i
+        return 0 # Fallback
+
+    # 4. Apply manual mapping
+    # Note: This results in 0, 1, 2, 3... (Ordinal categories)
+    # Constraint: "Data which has been discretized does not need to be binarized"
+    dataframe[col] = dataframe[col].apply(assign_bin)
+    
+    print(f" -> Discretized '{col}' manually using thresholds: {np.round(bins, 1)}")
     return dataframe
 
-def binarize_data(dataframe, target_col):
+def manual_binarize(dataframe, target_col):
     """
-    Transforms nominal attributes into binary attributes. Uses boolean mapping
-    for 2-value attributes and One-Hot Encoding for >2 values.
+    Manually transforms nominal attributes into binary columns without using pd.get_dummies.
+    It handles 2-value attributes via mapping and >2-value attributes via manual One-Hot Encoding.
+    
+    Constraint: "Implement specific tasks such as binarization yourself."
 
     @param dataframe - The pandas DataFrame to process.
     @param target_col - The name of the target column (to exclude from processing).
@@ -90,19 +125,26 @@ def binarize_data(dataframe, target_col):
     feature_cols = [c for c in df_processed.columns if c != target_col]
     
     for col in feature_cols:
-        # Only process object/categorical types
+        # Check for nominal data (Object/String)
+        # Note: We do NOT process the Discretized columns here (they are floats/ints now)
         if df_processed[col].dtype == 'object' or df_processed[col].dtype.name == 'category':
-            unique_values = df_processed[col].unique()
             
-            # Binary Attribute Rule: Map to 0/1
+            # Get unique values (ignoring NaN)
+            unique_values = df_processed[col].dropna().unique()
+            
+            # CASE A: Only 2 values -> Map to 0 and 1 in the same column
             if len(unique_values) == 2:
                 mapper = {unique_values[0]: 0, unique_values[1]: 1}
                 df_processed[col] = df_processed[col].map(mapper)
                 
-            # Nominal Attribute Rule: One-Hot Encode
+            # CASE B: > 2 values -> Manual One-Hot Encoding
             elif len(unique_values) > 2:
-                dummies = pd.get_dummies(df_processed[col], prefix=col, dtype=int)
-                df_processed = pd.concat([df_processed, dummies], axis=1)
+                for val in unique_values:
+                    new_col_name = f"{col}_{val}"
+                    # Manual boolean mask converted to integer
+                    df_processed[new_col_name] = (df_processed[col] == val).astype(int)
+                
+                # Drop the original nominal column
                 df_processed.drop(col, axis=1, inplace=True)
                 
     return df_processed
@@ -182,8 +224,8 @@ def get_majority_class(records, target_name):
 def calculate_weighted_gini(records, attribute, target_name):
     """
     Calculates the weighted Gini Index for a specific attribute split.
-    Rubric Requirement: "Impurity calculations correctly ignore the specific 
-    missing attribute for affected records."
+    It ignores NaN values specifically for the attribute being tested, 
+    but keeps them for other calculations.
 
     @param records - The subset of dataframe records.
     @param attribute - The attribute to evaluate for splitting.
@@ -287,10 +329,8 @@ def build_tree(records, attributes, target_name, depth=0):
     # Remove used attribute
     remaining_attrs = [a for a in attributes if a != best_attr]
     
-    # Create Children
-    # Note: We must handle NaNs here. If a row has NaN for best_attr, it technically
-    # cannot go down a specific branch. For training construction, we usually just 
-    # iterate over the KNOWN values.
+    # Create branches for every unique value found in this attribute
+    # For Discretized data, this will be 0.0, 1.0, 2.0, 3.0 (Multi-way split)
     distinct_values = records[best_attr].dropna().unique()
     
     for val in distinct_values:
@@ -390,19 +430,20 @@ if __name__ == "__main__":
         # Some columns might have NaNs (Interest_Rate). qcut handles NaNs by ignoring them
         # but we need to ensure we don't crash.
         try:
-            df = discretize_feature(df, col, num_bins=4)
+            df = manual_equal_freq_discretize(df, col, num_bins=4)
             print(f" -> Discretized '{col}' (4 bins)")
         except Exception as e:
             print(f" -> Warning: Could not discretize '{col}': {e}")
 
-    # B. Binarize Nominal
-    df = binarize_data(df, target_col)
+    # B. Manual Binarization (One-Hot for Nominal only)
+    # Note: Discretized cols are now numbers (0-3), so they won't be touched by this function
+    df = manual_binarize(df, target_col)
     print(f" -> Binarization Complete. New Shape: {df.shape}")
     
-    # 3. Split Data (90% Train, 10% Test)
+    # 3. Split Data (80% Train, 20% Test)
     # Shuffle first
     df = df.sample(frac=1, random_state=42).reset_index(drop=True)
-    train_size = int(0.9 * len(df))
+    train_size = int(0.8 * len(df))
     train_df = df.iloc[:train_size]
     test_df = df.iloc[train_size:]
     
