@@ -1,6 +1,16 @@
 """
 Author: Huy Le (hl9082)
 Assignment: 1
+Description:
+  This module implements a custom Decision Tree Classifier from scratch using Hunt's Algorithm 
+  and the Weighted Gini Index. It adheres to strict constraints requiring manual implementation 
+  of all preprocessing steps, avoiding high-level abstractions like pandas.qcut or get_dummies.
+
+  Key Features:
+  - Manual Equal-Frequency Discretization (4 bins).
+  - Manual One-Hot Encoding for nominal attributes.
+  - Dynamic handling of missing values during impurity calculations.
+  - Evaluation against a Weighted Random Baseline using Precision, Recall, and F1.
 """
 import pandas as pd
 import numpy as np
@@ -8,492 +18,341 @@ import random
 import os
 
 # ==========================================
-# 1. SETUP & REPRODUCIBILITY
+# 1. REPRODUCIBILITY SETUP
 # ==========================================
 # Rubric Requirement: "Comparison & Discussion" implies consistent results.
-# Setting seeds ensures the 'Random Model' and 'Tree Building' are reproducible.
 random.seed(42)
 np.random.seed(42)
 
-# ==========================================
-# 2. DATA LOADING (Via KaggleHub)
-# ==========================================
-def load_and_clean_data():
-
+class CreditRiskTree:
     """
-    Loads the Credit Risk dataset from the local directory, renames columns to match
-    assignment logic, and filters for relevant features.
-
-    @return df - A Pandas DataFrame containing the cleaned and renamed dataset.
+    A self-contained Decision Tree Classifier that implements Hunt's Algorithm
+    with manual preprocessing to meet specific assignment constraints.
     """
-
-    # 1. Define the expected local filename
-    csv_file = 'credit_risk_dataset.csv'
     
-    # 2. Check if the file actually exists locally
-    if not os.path.exists(csv_file):
-        raise FileNotFoundError(
-            f"ERROR: Could not find '{csv_file}' in the current folder. "
-            "Please download the CSV from Kaggle and place it next to this script."
-        )
-    
-    print(f"--- Loading '{csv_file}' from local directory ---")
-    df = pd.read_csv(csv_file)
-    
-    # 3. RENAME columns (Logic remains the same as before)
-    # This is crucial so the rest of your assignment code (Hunt's algorithm) 
-    # can find 'Income', 'Default', etc.
-    rename_map = {
-        'person_income': 'Income',
-        'person_home_ownership': 'Home',
-        'person_age': 'Age',
-        'loan_int_rate': 'Interest_Rate', 
-        'loan_amnt': 'Loan_Amount',
-        'loan_status': 'Default'
-    }
-    df = df.rename(columns=rename_map)
-    
-    # 4. Filter columns
-    df = df[['Income', 'Home', 'Age', 'Interest_Rate', 'Loan_Amount', 'Default']]
-    
-    return df
-
-# ==========================================
-# 3. PREPROCESSING FUNCTIONS
-# ==========================================
-
-def manual_equal_freq_discretize(dataframe, col, num_bins=4):
-    """
-    Manually implements Equal-Frequency (Quantile) binning without using pandas.qcut.
-    It calculates percentile thresholds using NumPy and applies them to create bins.
-    
-    Constraint: "Avoid using pandas.qcut for discretization."
-    Constraint: "Discretization should be static... before you start building your decision tree."
-
-    @param dataframe - The pandas DataFrame containing the data.
-    @param col - The name of the continuous column to discretize.
-    @param num_bins - The number of bins to create (default is 4).
-    @return dataframe - The DataFrame with the continuous column replaced by bin indices (0..3).
-    """
-    # 1. Get valid data to calculate thresholds (ignore NaNs for threshold calc)
-    valid_data = dataframe[col].dropna().values
-    
-    # 2. Calculate thresholds (Quantiles)
-    # linspace(0, 100, 5) -> [0.0, 25.0, 50.0, 75.0, 100.0]
-    quantiles = np.linspace(0, 100, num_bins + 1)
-    bins = np.percentile(valid_data, quantiles)
-    
-    # Ensure unique bin edges (handles edge case where many values are identical)
-    bins = np.unique(bins)
-    
-    # 3. Function to map a single value to a bin index
-    def assign_bin(val):
-        if pd.isna(val): return np.nan
-        # Find which bucket 'val' falls into
-        for i in range(len(bins) - 1):
-            # Check if val is in range [left, right]
-            lower = bins[i]
-            upper = bins[i+1]
-            
-            # Logic: inclusive lower, exclusive upper, but include max in the very last bin
-            if i == len(bins) - 2: # Last bin
-                if lower <= val <= upper: return i
-            else:
-                if lower <= val < upper: return i
-        return 0 # Fallback
-
-    # 4. Apply manual mapping
-    # Note: This results in 0, 1, 2, 3... (Ordinal categories)
-    # Constraint: "Data which has been discretized does not need to be binarized"
-    dataframe[col] = dataframe[col].apply(assign_bin)
-    
-    print(f" -> Discretized '{col}' manually using thresholds: {np.round(bins, 1)}")
-    return dataframe
-
-def manual_binarize(dataframe, target_col):
-    """
-    Manually transforms nominal attributes into binary columns without using pd.get_dummies.
-    It handles 2-value attributes via mapping and >2-value attributes via manual One-Hot Encoding.
-    
-    Constraint: "Implement specific tasks such as binarization yourself."
-
-    @param dataframe - The pandas DataFrame to process.
-    @param target_col - The name of the target column (to exclude from processing).
-    @return df_processed - A new DataFrame with nominal features binarized.
-    """
-    df_processed = dataframe.copy()
-    feature_cols = [c for c in df_processed.columns if c != target_col]
-    
-    for col in feature_cols:
-        # Check for nominal data (Object/String)
-        # Note: We do NOT process the Discretized columns here (they are floats/ints now)
-        if df_processed[col].dtype == 'object' or df_processed[col].dtype.name == 'category':
-            
-            # Get unique values (ignoring NaN)
-            unique_values = df_processed[col].dropna().unique()
-            
-            # CASE A: Only 2 values -> Map to 0 and 1 in the same column
-            if len(unique_values) == 2:
-                mapper = {unique_values[0]: 0, unique_values[1]: 1}
-                df_processed[col] = df_processed[col].map(mapper)
-                
-            # CASE B: > 2 values -> Manual One-Hot Encoding
-            elif len(unique_values) > 2:
-                for val in unique_values:
-                    new_col_name = f"{col}_{val}"
-                    # Manual boolean mask converted to integer
-                    df_processed[new_col_name] = (df_processed[col] == val).astype(int)
-                
-                # Drop the original nominal column
-                df_processed.drop(col, axis=1, inplace=True)
-                
-    return df_processed
-
-# ==========================================
-# 4. TREE CLASSES
-# ==========================================
-
-class LeafNode:
-    """
-    Represents a terminal node in the decision tree that holds a final class prediction.
-    """
-    def __init__(self, class_label):
+    def __init__(self, target_col='Default', min_samples=5):
         """
-        Initializes the LeafNode.
-        @param class_label - The predicted class (0 or 1).
-        """
-        self.class_label = class_label # The prediction (0 or 1)
-
-    def is_leaf(self):
-        """
-        Checks if the node is a leaf.
-        @return True.
-        """
-        return True
-
-class DecisionNode:
-    """
-    Represents a split point in the decision tree containing a test condition
-    and references to child nodes.
-    """
-    def __init__(self, split_attribute, majority_class):
-        """
-        Initializes the DecisionNode.
-        @param split_attribute - The name of the attribute used for splitting.
-        @param majority_class - The majority class of records at this node (fallback).
-        """
-        self.split_attribute = split_attribute
-        self.children = {} # Dictionary: {value: Node}
-        self.majority_class = majority_class # Fallback for unseen/missing values during prediction
-
-    def is_leaf(self):
-        """
-        Checks if the node is a leaf.
-        @return False
-        """
-        return False
-
-    def add_child(self, value, node):
-        """
-        Adds a branch to the decision node.
-        @param value - The value of the split attribute for this branch.
-        @param node - The child node (Leaf or Decision) associated with the value.
-        """
-        self.children[value] = node
-
-# ==========================================
-# 5. HUNT'S ALGORITHM (CORE LOGIC)
-# ==========================================
-
-def get_majority_class(records, target_name):
-    """
-    Finds the most frequent class label in a set of records.
-    Rubric Requirement: Tie-breaking handled consistently.
-
-    @param records - The subset of dataframe records.
-    @param target_name - The name of the target column.
-    @return - The mode (majority class) of the target column (0 or 1).
-    """
-    if len(records) == 0: 
-        return 0
-    
-    # value_counts() sorts by frequency. If there is a tie, Pandas picks based on index order.
-    # We can rely on this for consistency, or add explicit logic.
-    return records[target_name].mode()[0]
-
-def calculate_weighted_gini(records, attribute, target_name):
-    """
-    Calculates the weighted Gini Index for a specific attribute split.
-    It ignores NaN values specifically for the attribute being tested, 
-    but keeps them for other calculations.
-
-    @param records - The subset of dataframe records.
-    @param attribute - The attribute to evaluate for splitting.
-    @param target_name - The name of the target column.
-    @return weighted_gini - The calculated weighted Gini Index (float).
-    """
-    # 1. Identify Valid Records (Ignore NaNs for this specific attribute)
-    valid_mask = records[attribute].notna()
-    valid_records = records[valid_mask]
-    
-    total_valid = len(valid_records)
-    
-    # If this attribute is missing for EVERYONE, it's a useless split.
-    if total_valid == 0:
-        return 1.0 # Max impurity
-
-    weighted_gini = 0.0
-    unique_values = valid_records[attribute].unique()
-    
-    for val in unique_values:
-        # Subset based on the valid branch
-        subset = valid_records[valid_records[attribute] == val]
-        subset_size = len(subset)
+        Initializes the Decision Tree parameters.
         
-        # Calculate Gini for this child node
-        # Formula: 1 - sum(p^2)
-        gini_node = 1.0
-        classes = subset[target_name].unique()
-        for c in classes:
-            prob = len(subset[subset[target_name] == c]) / subset_size
-            gini_node -= prob**2
-            
-        # Add to weighted average
-        weighted_gini += (subset_size / total_valid) * gini_node
+        @param target_col - The name of the target column to predict.
+        @param min_samples - The minimum number of records required to split a node.
+        """
+        self.target = target_col
+        self.min_samples = min_samples
+        self.tree = None
+
+    # ==========================================
+    # PREPROCESSING UTILITIES
+    # ==========================================
+    
+    def manual_qcut(self, df, col, bins=4):
+        """
+        Manually implements Equal-Frequency (Quantile) binning without using pandas.qcut.
+        Calculates percentiles using NumPy and maps values to [0, 1, 2, 3].
         
-    return weighted_gini
+        Constraint: "Avoid using pandas.qcut for discretization."
 
-def find_best_split(records, attributes, target_name):
-    """
-    Iterates through all attributes to find the one that minimizes the Weighted Gini Index.
-    Rubric: "Select the attribute test condition that maximizes the gain in purity."
-
-    @param records - The subset of dataframe records.
-    @param attributes - List of available attribute names.
-    @param target_name - The name of the target column.
-    @return best_attr - The name of the attribute with the lowest Gini Index.
-    @return best_gini - The score of the best attribute (added for printing).
-    """
-    best_gini = float('inf')
-    best_attr = None
-    
-    for attr in attributes:
-        gini = calculate_weighted_gini(records, attr, target_name)
-        if gini < best_gini:
-            best_gini = gini
-            best_attr = attr
-            
-    return best_attr, best_gini
-
-def build_tree(records, attributes, target_name, depth=0):
-    """
-    Recursively builds the decision tree using Hunt's Algorithm.
-    
-    @param records - The subset of dataframe records for the current node.
-    @param attributes - List of available attributes for splitting.
-    @param target_name - The name of the target column.
-    @param depth - The current depth of the tree (used for printing indentation).
-    @return node - The root node of the constructed tree (or subtree).
-    """
-
-
-    # Helper indentation for printing
-    indent = "   | " * depth
-
-    # STOPPING CONDITION 1: Purity (All records same class) 
-    unique_classes = records[target_name].unique()
-    if len(unique_classes) == 1:
-        return LeafNode(unique_classes[0])
-
-    # STOPPING CONDITION 2: Fragmentation (Records < 5)
-    if len(records) < 5:
-        return LeafNode(get_majority_class(records, target_name))
-
-    # STOPPING CONDITION 3: No Attributes Left
-    if len(attributes) == 0:
-        return LeafNode(get_majority_class(records, target_name))
-
-    # --- RECURSION ---
-    best_attr, best_gini = find_best_split(records, attributes, target_name)
-    
-    # Edge Case: If no split improves anything (or all Gini=1.0), stop
-    if best_attr is None:
-        return LeafNode(get_majority_class(records, target_name))
-
-    # PRINTING THE GINI INDEX (Requested Feature)
-    print(f"{indent}Split on [{best_attr}] (Weighted Gini: {best_gini:.4f})")
-
-    # Create Decision Node
-    node = DecisionNode(best_attr, majority_class=get_majority_class(records, target_name))
-    
-    # Remove used attribute
-    remaining_attrs = [a for a in attributes if a != best_attr]
-    
-    # Create branches for every unique value found in this attribute
-    # For Discretized data, this will be 0.0, 1.0, 2.0, 3.0 (Multi-way split)
-    distinct_values = records[best_attr].dropna().unique()
-    
-    for val in distinct_values:
-        subset = records[records[best_attr] == val]
+        @param df - The pandas DataFrame containing the data.
+        @param col - The name of the continuous column to discretize.
+        @param bins - The number of bins to create (default is 4).
+        @return df - The DataFrame with the continuous column replaced by bin indices.
+        """
+        # Extract valid data to determine thresholds (ignoring NaNs)
+        valid_vals = df[col].dropna().values
         
-        if len(subset) == 0:
-            # If a branch is empty, leaf with parent's majority
-            child = LeafNode(get_majority_class(records, target_name))
-        else:
-            # Pass depth + 1 for correct indentation printing
-            child = build_tree(subset, remaining_attrs, target_name, depth+1)
+        # Calculate percentile thresholds (0, 25, 50, 75, 100)
+        # Using linspace ensures exactly 'bins' number of intervals.
+        thresholds = np.percentile(valid_vals, np.linspace(0, 100, bins + 1))
+        
+        # Deduplicate thresholds to handle skewed distributions (e.g. many 0s)
+        thresholds = np.unique(thresholds)
+        
+        def _get_bin_index(val):
+            if pd.isna(val): return np.nan
+            # Iterate through thresholds to find the correct bin
+            for i in range(len(thresholds) - 1):
+                lower, upper = thresholds[i], thresholds[i+1]
+                # Logic: Inclusive lower, exclusive upper
+                # Exception: The final bin includes the upper bound
+                if i == len(thresholds) - 2:
+                    if lower <= val <= upper: return i
+                elif lower <= val < upper: return i
+            return 0 # Fallback
             
-        node.add_child(val, child)
+        # Apply transformation
+        df[col] = df[col].apply(_get_bin_index)
+        print(f"   [Process] Discretized '{col}' using thresholds: {np.round(thresholds, 1)}")
+        return df
 
-    return node
+    def manual_one_hot(self, df):
+        """
+        Detects nominal columns and applies manual One-Hot Encoding.
+        
+        Constraint: "Implement specific tasks such as binarization yourself."
+
+        @param df - The pandas DataFrame to process.
+        @return processed_df - A new DataFrame with nominal features binarized.
+        """
+        # Identify nominal columns (exclude target and already numeric/discretized)
+        features = [c for c in df.columns if c != self.target]
+        processed_df = df.copy()
+        
+        for col in features:
+            # Check for object/string types
+            if processed_df[col].dtype == 'object':
+                unique_vals = processed_df[col].dropna().unique()
+                
+                # Binary Case (e.g., Rent vs Own) -> Single column mapping
+                if len(unique_vals) == 2:
+                    mapping = {unique_vals[0]: 0, unique_vals[1]: 1}
+                    processed_df[col] = processed_df[col].map(mapping)
+                    
+                # Multi-Class Case -> Create new columns manually
+                elif len(unique_vals) > 2:
+                    for val in unique_vals:
+                        new_col = f"{col}_{val}"
+                        # Boolean check cast to int (0/1)
+                        processed_df[new_col] = (processed_df[col] == val).astype(int)
+                    # Remove original column after encoding
+                    processed_df.drop(columns=[col], inplace=True)
+                    
+        return processed_df
+
+    # ==========================================
+    # CORE ALGORITHM (HUNT'S + GINI)
+    # ==========================================
+
+    def _calculate_gini(self, records, attr):
+        """
+        Computes Weighted Gini Index for a specific attribute split.
+        It ignores NaN values specifically for the attribute being tested.
+
+        @param records - The subset of dataframe records.
+        @param attr - The attribute to evaluate for splitting.
+        @return weighted_gini - The calculated weighted Gini Index (float).
+        """
+        # Filter: Only consider records where this specific attribute exists
+        valid_df = records[records[attr].notna()]
+        total_count = len(valid_df)
+        
+        if total_count == 0: return 1.0 # Max impurity if no valid data
+        
+        weighted_gini = 0.0
+        # Iterate through every branch (bin or category) found in this subset
+        for value in valid_df[attr].unique():
+            branch_df = valid_df[valid_df[attr] == value]
+            branch_size = len(branch_df)
+            
+            # Calculate Gini of this specific child node: 1 - sum(prob^2)
+            score = 1.0
+            for cls in branch_df[self.target].unique():
+                prob = len(branch_df[branch_df[self.target] == cls]) / branch_size
+                score -= prob ** 2
+            
+            # Add to weighted average
+            weighted_gini += (branch_size / total_count) * score
+            
+        return weighted_gini
+
+    def _hunts_algorithm(self, records, attributes, depth=0):
+        """
+        Recursive implementation of Hunt's Algorithm to build the tree.
+        
+        @param records - The subset of dataframe records for the current node.
+        @param attributes - List of available attributes for splitting.
+        @param depth - The current depth (used for logging).
+        @return node - A dictionary representing the node and its children.
+        """
+        # 1. Identify Majority Class (for tie-breaking/leaf fallback)
+        if len(records) == 0: return 0
+        majority_cls = records[self.target].mode()[0]
+        
+        # STOPPING CONDITIONS
+        # A. Purity Check (All records have same class)
+        if len(records[self.target].unique()) == 1:
+            return {'type': 'leaf', 'class': records[self.target].iloc[0]}
+        
+        # B. Min Records Check (Rubric: < 5 records)
+        if len(records) < self.min_samples:
+            return {'type': 'leaf', 'class': majority_cls}
+            
+        # C. Attribute Exhaustion (No columns left to split on)
+        if not attributes:
+            return {'type': 'leaf', 'class': majority_cls}
+            
+        # SPLITTING STEP
+        best_attr = None
+        min_gini = float('inf')
+        
+        for attr in attributes:
+            gini = self._calculate_gini(records, attr)
+            if gini < min_gini:
+                min_gini = gini
+                best_attr = attr
+                
+        # Edge Case: If no split improves impurity, stop.
+        if best_attr is None:
+            return {'type': 'leaf', 'class': majority_cls}
+            
+        # Construct Decision Node
+        node = {
+            'type': 'node',
+            'attr': best_attr,
+            'fallback': majority_cls, # Used if we hit a missing value during test
+            'branches': {}
+        }
+        
+        # Log split for grading visibility
+        print(f"{'  | ' * depth}Split: [{best_attr}] (Weighted Gini: {min_gini:.4f})")
+        
+        # Recursive Calls
+        remaining_attrs = [a for a in attributes if a != best_attr]
+        unique_vals = records[best_attr].dropna().unique()
+        
+        for val in unique_vals:
+            subset = records[records[best_attr] == val]
+            child_node = self._hunts_algorithm(subset, remaining_attrs, depth + 1)
+            node['branches'][val] = child_node
+            
+        return node
+
+    def fit(self, df):
+        """
+        Starts the tree construction process.
+        
+        @param df - The training dataframe including the target column.
+        """
+        attributes = [c for c in df.columns if c != self.target]
+        print("\n--- Starting Tree Construction ---")
+        self.tree = self._hunts_algorithm(df, attributes)
+        print("--- Construction Complete ---\n")
+
+    def _predict_row(self, row, node):
+        """
+        Recursively traverses the tree to predict a single row.
+        
+        @param row - The pandas Series representing one record.
+        @param node - The current tree node dictionary.
+        @return class_label - The predicted class (0 or 1).
+        """
+        # Base Case: We reached a leaf
+        if node['type'] == 'leaf':
+            return node['class']
+        
+        val = row.get(node['attr'])
+        
+        # Handle Missing Values or Unseen Data during Inference
+        # If val is NaN or a category we never trained on, use the node's majority class.
+        if pd.isna(val) or val not in node['branches']:
+            return node['fallback'] 
+            
+        return self._predict_row(row, node['branches'][val])
+
+    def predict(self, df):
+        """
+        Generates predictions for a dataset.
+        
+        @param df - The dataframe to predict on.
+        @return predictions - A list of predicted class labels.
+        """
+        return [self._predict_row(row, self.tree) for _, row in df.iterrows()]
 
 # ==========================================
-# 6. EVALUATION & METRICS
+# 3. METRICS & UTILS
 # ==========================================
 
-def predict_single(node, row):
+def get_performance(y_true, y_pred):
     """
-    Traverses the decision tree to predict the class for a single row.
-
-    @param node - The current node in the tree traversal.
-    @param row - The data row (pandas Series) to predict.
-    @return - The predicted class label (0 or 1).
-    """
-    if node.is_leaf():
-        return node.class_label
+    Calculates Precision, Recall, F1, and Confusion Matrix components.
     
-    attr = node.split_attribute
-    val = row.get(attr)
-    
-    # Handle Missing Values or Unseen Categories during Test Time
-    # If the value is NaN or we never saw this value in training -> Use Majority Fallback
-    if pd.isna(val) or val not in node.children:
-        return node.majority_class
-    
-    return predict_single(node.children[val], row)
-
-def calculate_metrics(y_true, y_pred):
-    """
-    Calculates evaluation metrics (Precision, Recall, F1) and Confusion Matrix counts.
     Rubric: "Precision, Recall, and F1-measure correctly calculated."
 
     @param y_true - List of actual class labels.
     @param y_pred - List of predicted class labels.
-    @return - A dictionary containing TP, TN, FP, FN, Precision, Recall, and F1.
+    @return metrics - Dictionary containing TP, TN, FP, FN and scores.
     """
-    tp = sum((t == 1 and p == 1) for t, p in zip(y_true, y_pred))
-    tn = sum((t == 0 and p == 0) for t, p in zip(y_true, y_pred))
-    fp = sum((t == 0 and p == 1) for t, p in zip(y_true, y_pred))
-    fn = sum((t == 1 and p == 0) for t, p in zip(y_true, y_pred))
+    # Manual calculation of confusion matrix components
+    TP = sum((t == 1 and p == 1) for t, p in zip(y_true, y_pred))
+    TN = sum((t == 0 and p == 0) for t, p in zip(y_true, y_pred))
+    FP = sum((t == 0 and p == 1) for t, p in zip(y_true, y_pred))
+    FN = sum((t == 1 and p == 0) for t, p in zip(y_true, y_pred))
     
-    precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
-    recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-    f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0.0
+    # Avoid div by zero errors
+    prec = TP / (TP + FP) if (TP + FP) > 0 else 0.0
+    rec  = TP / (TP + FN) if (TP + FN) > 0 else 0.0
+    f1   = 2 * (prec * rec) / (prec + rec) if (prec + rec) > 0 else 0.0
     
-    return {"TP": tp, "TN": tn, "FP": fp, "FN": fn, "Precision": precision, "Recall": recall, "F1": f1}
-
-def print_confusion_matrix(metrics):
-    """
-    Displays the confusion matrix in a formatted grid.
-    Rubric: "Confusion matrix correctly constructed... and displayed."
-
-    @param metrics - Dictionary containing TP, TN, FP, FN counts.
-    """
-    print("\n--- Confusion Matrix ---")
-    print(f"{'':<12} {'Pred: 0':<10} {'Pred: 1':<10}")
-    print(f"{'Actual: 0':<12} {metrics['TN']:<10} {metrics['FP']:<10}")
-    print(f"{'Actual: 1':<12} {metrics['FN']:<10} {metrics['TP']:<10}")
+    return {'TP': TP, 'TN': TN, 'FP': FP, 'FN': FN, 'Precision': prec, 'Recall': rec, 'F1': f1}
 
 # ==========================================
-# 7. MAIN EXECUTION
+# 4. EXECUTION FLOW
 # ==========================================
 
 if __name__ == "__main__":
-    # 1. Load Data
-    try:
-        df = load_and_clean_data()
-    except Exception as e:
-        print(e)
+    # A. LOAD
+    csv_path = 'credit_risk_dataset.csv'
+    if not os.path.exists(csv_path):
+        print("Error: CSV not found. Please download it from Kaggle.")
         exit()
-
-    target_col = 'Default'
+        
+    df = pd.read_csv(csv_path)
     
-    # 2. Define Attribute Types
-    # Based on Kaggle Dataset:
-    # Interest_Rate and Age are continuous. Home is Nominal.
-    continuous_cols = ['Income', 'Age', 'Interest_Rate', 'Loan_Amount']
+    # Rename to match assignment variable names
+    df.rename(columns={
+        'person_income': 'Income', 'person_home_ownership': 'Home',
+        'person_age': 'Age', 'loan_int_rate': 'Interest_Rate', 
+        'loan_amnt': 'Loan_Amount', 'loan_status': 'Default'
+    }, inplace=True)
     
-    print("\n[Step 1] Preprocessing...")
+    df = df[['Income', 'Home', 'Age', 'Interest_Rate', 'Loan_Amount', 'Default']]
     
-    # A. Discretize Continuous
-    for col in continuous_cols:
-        # Some columns might have NaNs (Interest_Rate). qcut handles NaNs by ignoring them
-        # but we need to ensure we don't crash.
-        try:
-            df = manual_equal_freq_discretize(df, col, num_bins=4)
-            print(f" -> Discretized '{col}' (4 bins)")
-        except Exception as e:
-            print(f" -> Warning: Could not discretize '{col}': {e}")
-
-    # B. Manual Binarization (One-Hot for Nominal only)
-    # Note: Discretized cols are now numbers (0-3), so they won't be touched by this function
-    df = manual_binarize(df, target_col)
-    print(f" -> Binarization Complete. New Shape: {df.shape}")
+    # B. PREPROCESS
+    model = CreditRiskTree(target_col='Default')
     
-    # 3. Split Data (80% Train, 20% Test)
-    # Shuffle first
+    # Discretize continuous vars (handles NaNs internally)
+    for col in ['Income', 'Age', 'Interest_Rate', 'Loan_Amount']:
+        df = model.manual_qcut(df, col)
+        
+    # Binarize nominals
+    df = model.manual_one_hot(df)
+    
+    # C. SPLIT
     df = df.sample(frac=1, random_state=42).reset_index(drop=True)
-    train_size = int(0.8 * len(df))
-    train_df = df.iloc[:train_size]
-    test_df = df.iloc[train_size:]
+    split_idx = int(0.8 * len(df))
+    train_df, test_df = df.iloc[:split_idx], df.iloc[split_idx:]
     
-    print(f"\n[Step 2] Training Tree on {len(train_df)} records...")
-    available_attributes = [c for c in df.columns if c != target_col]
+    # D. TRAIN
+    model.fit(train_df)
     
-    print("--- Start Tree Construction ---")
+    # E. EVALUATE (TREE)
+    print("Evaluating Decision Tree...")
+    tree_preds = model.predict(test_df)
+    tree_metrics = get_performance(test_df['Default'].tolist(), tree_preds)
     
-    # Build Tree (Pass depth=0 to start indentation)
-    tree_root = build_tree(train_df, available_attributes, target_col, depth=0)
+    # F. EVALUATE (RANDOM BASELINE)
+    # Weighted random based on training data distribution
+    print("Evaluating Random Baseline...")
+    default_prob = train_df['Default'].mean()
+    rand_preds = [1 if random.random() < default_prob else 0 for _ in range(len(test_df))]
+    rand_metrics = get_performance(test_df['Default'].tolist(), rand_preds)
     
-    print("--- End Tree Construction ---")
-    print(" -> Tree construction complete.")
+    # G. REPORT
+    print("\n" + "="*30)
+    print("FINAL RESULTS")
+    print("="*30)
     
-    print("\n[Step 3] Evaluation on Test Set...")
-    
-    # A. Tree Predictions
-    tree_preds = [predict_single(tree_root, row) for _, row in test_df.iterrows()]
-    actuals = test_df[target_col].tolist()
-    
-    tree_metrics = calculate_metrics(actuals, tree_preds)
-    
-    # B. Random Weighted Baseline
-    # "Compare... with a simple random model weighted based on probability"
-    prob_default = train_df[target_col].mean()
-    print(f" -> Training Data Default Probability: {prob_default:.2%}")
-    
-    random_preds = [1 if random.random() < prob_default else 0 for _ in range(len(test_df))]
-    random_metrics = calculate_metrics(actuals, random_preds)
-    
-    # C. Display Results
-    print("\n========================================")
-    print("RESULTS SUMMARY")
-    print("========================================")
-    
-    print("\n[A] My Decision Tree Model")
-    print_confusion_matrix(tree_metrics)
+    print(f"\n[A] Decision Tree Model")
+    print(f"Confusion Matrix: [TP: {tree_metrics['TP']}, FP: {tree_metrics['FP']}, TN: {tree_metrics['TN']}, FN: {tree_metrics['FN']}]")
     print(f"Precision: {tree_metrics['Precision']:.4f}")
     print(f"Recall:    {tree_metrics['Recall']:.4f}")
     print(f"F1-Score:  {tree_metrics['F1']:.4f}")
     
-    print("\n[B] Random Weighted Baseline")
-    print_confusion_matrix(random_metrics)
-    print(f"Precision: {random_metrics['Precision']:.4f}")
-    print(f"Recall:    {random_metrics['Recall']:.4f}")
-    print(f"F1-Score:  {random_metrics['F1']:.4f}")
-    
-    print("\n[C] Discussion Prompt")
-    print("Compare the 'Tree F1' vs 'Random F1'.")
-    if tree_metrics['F1'] > random_metrics['F1']:
+    print(f"\n[B] Random Weighted Baseline")
+    print(f"Confusion Matrix: [TP: {rand_metrics['TP']}, FP: {rand_metrics['FP']}, TN: {rand_metrics['TN']}, FN: {rand_metrics['FN']}]")
+    print(f"Precision: {rand_metrics['Precision']:.4f}")
+    print(f"Recall:    {rand_metrics['Recall']:.4f}")
+    print(f"F1-Score:  {rand_metrics['F1']:.4f}")
+    if tree_metrics['F1'] > rand_metrics['F1']:
         print(" -> SUCCESS: The Decision Tree significantly outperforms random guessing.")
     else:
         print(" -> ISSUE: The Decision Tree is performing similarly to random guessing.")
