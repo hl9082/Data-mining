@@ -1,12 +1,12 @@
 # =============================================================================
-# Program Name: HW_NN_LastName_FirstName_Trainer.py
-# Author: [Your Name]
-# Date: [Current Date]
+# Program Name: HW_NN_Le_Huy_Trainer.py
+# Author: Huy Le (hl9082)
+# Class: Data Mining
 # Purpose: This script acts as the "Trainer" or "Mentor" program[cite: 76]. It reads in 
 #          training data, pre-quantizes the speed attribute[cite: 136], tests all possible 
 #          speed thresholds to find the lowest misclassification rate[cite: 140, 142], 
-#          plots an ROC curve[cite: 145, 151], and automatically generates a 
-#          standalone Classifier program[cite: 81, 82].
+#          plots an ROC curve, and automatically generates a 
+#          standalone Classifier program.
 # =============================================================================
 
 import csv
