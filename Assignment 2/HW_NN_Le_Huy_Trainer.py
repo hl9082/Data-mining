@@ -60,7 +60,7 @@ def main():
             for current_row in csv_reader:
                 # Convert from string -> float -> rounded integer [cite: 136]
                 raw_speed_string = current_row[speed_column_index]
-                quantized_speed = int(round(float(raw_speed_string)))
+                quantized_speed = int(float(raw_speed_string)+0.5)
                 
                 # Extract the target intent (1 = non-aggressive, 2 = aggressive) [cite: 21]
                 target_intent = int(current_row[intent_column_index])
@@ -256,7 +256,7 @@ def classify_data(input_filename):
         
         for current_row in csv_reader:
             # Must quantize exactly the same way as the trainer! [cite: 199]
-            speed_val = int(round(float(current_row[speed_index])))
+            speed_val = int(float(current_row[speed_index])+0.5)
             
             # Apply the fixed threshold [cite: 97]
             if speed_val >= {best_speed_threshold}:

@@ -49,7 +49,7 @@ def classify_data(input_filename):
         
         for current_row in csv_reader:
             # Must quantize exactly the same way as the trainer! [cite: 199]
-            speed_val = int(round(float(current_row[speed_index])))
+            speed_val = int(float(current_row[speed_index])+0.5)
             
             # Apply the fixed threshold [cite: 97]
             if speed_val >= 63:
