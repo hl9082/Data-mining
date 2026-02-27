@@ -179,6 +179,53 @@ def main():
     print(f"Best Speed Threshold: >= {best_speed_threshold}")
     print(f"Lowest Misclassification Rate: {lowest_misclassification_rate}")
 
+
+    # =========================================================================
+    # STEP 2B: Generate Final Confusion Matrix for the Best Threshold
+    # We must report how well our final chosen threshold performed on the 
+    # training data for the final write-up.
+    # =========================================================================
+    
+    best_tp = 0
+    best_fp = 0
+    best_tn = 0
+    best_fn = 0
+    
+    # Loop through the quantized training data one last time to tally the final metrics
+    for record_index in range(total_records):
+        actual_speed = all_speeds[record_index]
+        actual_intent = all_intents[record_index]
+        
+        # Apply our best discovered threshold rule
+        if actual_speed >= best_speed_threshold:
+            guessed_intent = 2
+        else:
+            guessed_intent = 1
+            
+        # Tally the results into our Confusion Matrix categories
+        if guessed_intent == 2 and actual_intent == 1:
+            best_fp += 1
+        elif guessed_intent == 1 and actual_intent == 2:
+            best_fn += 1
+        elif guessed_intent == 2 and actual_intent == 2:
+            best_tp += 1
+        elif guessed_intent == 1 and actual_intent == 1:
+            best_tn += 1
+
+    # Print the perfectly formatted matrix to the console for the PDF report
+    print("\n" + "="*60)
+    print("FINAL CONFUSION MATRIX FOR WRITE-UP (TRAINING DATA)")
+    print("="*60)
+    print(f"True Positives (TP)  [Aggressive correctly caught]:      {best_tp}")
+    print(f"False Negatives (FN) [Aggressive missed]:                {best_fn}")
+    print(f"True Negatives (TN)  [Non-aggressive correctly ignored]: {best_tn}")
+    print(f"False Positives (FP) [Non-aggressive falsely accused]:   {best_fp}")
+    
+    # Calculate overall accuracy
+    final_accuracy = (best_tp + best_tn) / total_records
+    print(f"\nFinal Training Accuracy: {final_accuracy * 100:.2f}%")
+    print("="*60 + "\n")
+
     # =========================================================================
     # STEP 3A: Plotting the ROC Curve and Scatter Plot
     # We use matplotlib to visualize the TPR vs FAR[cite: 150].
