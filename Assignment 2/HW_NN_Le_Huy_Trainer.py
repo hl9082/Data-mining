@@ -14,6 +14,7 @@ import glob
 import matplotlib.pyplot as plt
 import os
 import random
+import pandas as pd
 
 def main():
     # =========================================================================
@@ -212,14 +213,22 @@ def main():
         elif guessed_intent == 1 and actual_intent == 1:
             best_tn += 1
 
-    # Print the perfectly formatted matrix to the console for the PDF report
+    # Create a dictionary organizing your results into columns
+    matrix_data = {
+        'Predicted: Aggressive (2)': [best_tp, best_fp],
+        'Predicted: Non-Aggressive (1)': [best_fn, best_tn]
+    }
+    
+    # Define the row labels
+    row_labels = ['Actual: Aggressive (2)', 'Actual: Non-Aggressive (1)']
+    
+    # Build the Pandas DataFrame
+    confusion_matrix_df = pd.DataFrame(matrix_data, index=row_labels)
+    
     print("\n" + "="*60)
     print("FINAL CONFUSION MATRIX FOR WRITE-UP (TRAINING DATA)")
     print("="*60)
-    print(f"True Positives (TP)  [Aggressive correctly caught]:      {best_tp}")
-    print(f"False Negatives (FN) [Aggressive missed]:                {best_fn}")
-    print(f"True Negatives (TN)  [Non-aggressive correctly ignored]: {best_tn}")
-    print(f"False Positives (FP) [Non-aggressive falsely accused]:   {best_fp}")
+    print(confusion_matrix_df)
     
     # Calculate overall accuracy
     final_accuracy = (best_tp + best_tn) / total_records
