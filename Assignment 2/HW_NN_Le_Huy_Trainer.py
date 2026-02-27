@@ -215,6 +215,32 @@ import csv
 import sys
 
 def classify_data(input_filename):
+
+    \"\"\"
+    Reads validation data and classifies driver intent using a fixed speed threshold.
+
+    This function opens a provided CSV file containing driving records, extracts 
+    the 'Speed' attribute, and quantizes it to the nearest integer. It then applies 
+    a hardcoded threshold (discovered during the training phase) to predict if the 
+    driver is non-aggressive (1) or aggressive (2). The predictions are printed to 
+    the console and saved as a new column in an output CSV file.
+
+    Args:
+        input_filename (str): The relative or absolute file path to the 
+            validation CSV file. The CSV must contain a header row with a 
+            'Speed' column.
+
+    Returns:
+        None: The function does not return a value. Instead, it writes the 
+            results to 'HW_NN_Le_Huy_MyClassifications.csv' and prints 
+            the classifications to standard output.
+
+    Raises:
+        FileNotFoundError: If the provided `input_filename` does not exist.
+        ValueError: If the 'Speed' column contains data that cannot be 
+            converted to a float.
+    \"\"\"
+
     output_filename = 'HW_NN_Le_Huy_MyClassifications.csv'
     
     with open(input_filename, mode='r') as in_file, open(output_filename, mode='w', newline='') as out_file:
