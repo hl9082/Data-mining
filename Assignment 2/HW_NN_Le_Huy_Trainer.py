@@ -1,31 +1,31 @@
 # =============================================================================
-# Program Name: HW_NN_Le_Huy_Trainer.py
+# Program Name: HW_03_Le_Huy_Trainer.py
 # Author: Huy Le (hl9082)
 # Class: Data Mining
-# Purpose: This script acts as the "Trainer" or "Mentor" program[cite: 76]. It reads in 
-#          training data, pre-quantizes the speed attribute[cite: 136], tests all possible 
+# Purpose: This script acts as the "Trainer" or "Mentor" program. It reads in 
+#          training data, pre-quantizes the speed attribute, tests all possible 
 #          speed thresholds to find the lowest misclassification rate[cite: 140, 142], 
 #          plots an ROC curve, and automatically generates a 
 #          standalone Classifier program.
 # =============================================================================
 
-import csv
-import glob
-import matplotlib.pyplot as plt
+import csv #we use the built-in csv module to read and write CSV files
+import glob #we use glob to find all CSV files in the Data folder
+import matplotlib.pyplot as plt #we use matplotlib to plot the ROC curve
 import os
-import random
-import pandas as pd
+import random #we use random to shuffle our data before balancing the classes
+import pandas as pd  #we use pandas to print out the confusion matrix
 
-def main():
+def main(): # The main function that orchestrates the training process and generates the classifier.
     # =========================================================================
     # STEP 1: Data Ingestion and Pre-Quantization
     # We will loop through all available CSV files (e.g., your 32 files), 
     # extract the speed and intent, and round the speed to the nearest integer 
-    # to reduce noise and computation time[cite: 136, 206, 210].
+    # to reduce noise and computation time.
     # =========================================================================
     
-    all_speeds = []
-    all_intents = []
+    all_speeds = [] # we store all quantized speeds here
+    all_intents = [] #we store all corresponding intents here (1 for non-aggressive, 2 for aggresive)
     
     # 1. Find exactly where this Python script is saved on your hard drive
     script_directory = os.path.dirname(os.path.abspath(__file__))
@@ -56,14 +56,14 @@ def main():
             # Assuming headers are 'Speed' and 'Intent' (or similar).
             # If your data has fixed columns, you can hardcode the indices.
             speed_column_index = header_row.index('Speed')
-            intent_column_index = len(header_row) - 1 # Last attribute is target [cite: 20]
+            intent_column_index = len(header_row) - 1 # Last attribute is target
             
             for current_row in csv_reader:
-                # Convert from string -> float -> rounded integer [cite: 136]
+                # Convert from string -> float -> rounded integer
                 raw_speed_string = current_row[speed_column_index]
                 quantized_speed = int(float(raw_speed_string)+0.5)
                 
-                # Extract the target intent (1 = non-aggressive, 2 = aggressive) [cite: 21]
+                # Extract the target intent (1 = non-aggressive, 2 = aggressive)
                 target_intent = int(current_row[intent_column_index])
                 
                 all_speeds.append(quantized_speed)
@@ -73,8 +73,8 @@ def main():
     # STEP 1B: Data Balancing (Crucial for the rubric!)
     # Separate the data by intent to balance the classes.
     # =========================================================================
-    aggressive_records = []
-    non_aggressive_records = []
+    aggressive_records = [] # we store all aggressive records here
+    non_aggressive_records = [] #we store all non-aggressive records here
     
     # Group the speeds by their intent
     for i in range(len(all_speeds)):
@@ -103,25 +103,26 @@ def main():
     
     # =========================================================================
 
-    total_records = len(all_speeds)
+    total_records = len(all_speeds) # after balancing 
+    # this is the total number of records we have to work with
     print(f"Successfully loaded and quantized {total_records} records.")
 
     # =========================================================================
     # STEP 2: Find the Best Threshold & Calculate ROC Data
     # Get the min and max speeds. We will test every integer between them as a 
-    # potential threshold[cite: 140]. We track the misclassification rate, True 
-    # Positive Rate (TPR), and False Alarm Rate (FAR)[cite: 147, 149].
+    # potential threshold. We track the misclassification rate, True 
+    # Positive Rate (TPR), and False Alarm Rate (FAR).
     # =========================================================================
     
-    minimum_speed = min(all_speeds)
-    maximum_speed = max(all_speeds)
+    minimum_speed = min(all_speeds) # find the min speed in training data
+    maximum_speed = max(all_speeds) # find max speed in training data
     
     lowest_misclassification_rate = 1.0 # Start at 100% error
-    best_speed_threshold = minimum_speed
+    best_speed_threshold = minimum_speed # initialize to the lowest threshold possible
     
     # Lists to store metrics for our ROC curve
-    true_positive_rates = []
-    false_alarm_rates = []
+    true_positive_rates = [] # TPR=TP/(TP+FN)
+    false_alarm_rates = [] #FAR=FP/(FP+TN)
     
     # Loop through all possible speeds
     for test_threshold in range(minimum_speed, maximum_speed + 1):
@@ -135,7 +136,7 @@ def main():
             actual_speed = all_speeds[record_index]
             actual_intent = all_intents[record_index]
             
-            # Apply our One-Rule logic: speed >= threshold means aggressive (2) [cite: 140, 141]
+            # Apply our One-Rule logic: speed >= threshold means aggressive (2)
             if actual_speed >= test_threshold:
                 guessed_intent = 2
             else:
@@ -159,7 +160,7 @@ def main():
             lowest_misclassification_rate = current_misclassification_rate
             best_speed_threshold = test_threshold
             
-        # Calculate TPR and FAR for the ROC Curve [cite: 147, 149]
+        # Calculate TPR and FAR for the ROC Curve
         total_actual_aggressives = true_positives + false_negatives
         total_actual_non_aggressives = false_positives + true_negatives
         
@@ -237,13 +238,13 @@ def main():
 
     # =========================================================================
     # STEP 3A: Plotting the ROC Curve and Scatter Plot
-    # We use matplotlib to visualize the TPR vs FAR[cite: 150].
+    # We use matplotlib to visualize the TPR vs FAR.
     # =========================================================================
     
     # ROC Curve
     plt.figure(figsize=(8, 8))
     plt.plot(false_alarm_rates, true_positive_rates, marker='o', linestyle='--')
-    plt.plot([0, 1], [0, 1], color='gray', linestyle='-') # Coin toss line [cite: 169]
+    plt.plot([0, 1], [0, 1], color='gray', linestyle='-') # Coin toss line
     plt.title('Receiver Operator Characteristic (ROC) Curve')
     plt.xlabel('False Alarm Rate')
     plt.ylabel('True Positive Rate')
@@ -251,21 +252,21 @@ def main():
     plt.show()
 
     # Note: To create the scatter plot mentioned in Step 3, you'll need a second feature.
-    # The instructions recommend plotting every attribute vs every other attribute[cite: 28, 64].
+    # The instructions recommend plotting every attribute vs every other attribute.
     # plt.scatter(feature_x_list, feature_y_list) 
     # plt.show()
 
     # =========================================================================
     # STEP 3B: Generating the Classifier Program
     # We dynamically create a new Python script that uses our discovered 
-    # best_speed_threshold to classify new validation data[cite: 81, 82, 91].
+    # best_speed_threshold to classify new validation data.
     # =========================================================================
     
     classifier_code = f"""# =============================================================================
-# Program Name: HW_NN_Classifier_Le_Huy.py
+# Program Name: HW_03_Classifier_Le_Huy.py
 # Purpose: This program was automatically generated by the Trainer program. 
 #          It reads validation data and classifies drivers using the fixed 
-#          threshold discovered during training[cite: 97, 105].
+#          threshold discovered during training.
 # =============================================================================
 import csv
 import sys
@@ -288,7 +289,7 @@ def classify_data(input_filename):
 
     Returns:
         None: The function does not return a value. Instead, it writes the 
-            results to 'HW_NN_Le_Huy_MyClassifications.csv' and prints 
+            results to 'HW_03_Le1_MyClassifications.csv' and prints 
             the classifications to standard output.
 
     Raises:
@@ -297,7 +298,7 @@ def classify_data(input_filename):
             converted to a float.
     \"\"\"
 
-    output_filename = 'HW_NN_Le_Huy_MyClassifications.csv'
+    output_filename = 'HW_03_Le1_MyClassifications.csv'
     
     with open(input_filename, mode='r') as in_file, open(output_filename, mode='w', newline='') as out_file:
         csv_reader = csv.reader(in_file)
@@ -311,19 +312,19 @@ def classify_data(input_filename):
         speed_index = header_row.index('Speed')
         
         for current_row in csv_reader:
-            # Must quantize exactly the same way as the trainer! [cite: 199]
+            # Must quantize exactly the same way as the trainer!
             speed_val = int(float(current_row[speed_index])+0.5)
             
-            # Apply the fixed threshold [cite: 97]
+            # Apply the fixed threshold
             if speed_val >= {best_speed_threshold}:
-                guessed_intent = 2 # aggressive [cite: 98]
+                guessed_intent = 2 # aggressive
             else:
-                guessed_intent = 1 # non-aggressive [cite: 100]
+                guessed_intent = 1 # non-aggressive
                 
             current_row.append(guessed_intent)
             csv_writer.writerow(current_row)
             
-            # Print to standard output as required [cite: 103]
+            # Print to standard output as required
             print(guessed_intent)
 
 if __name__ == "__main__":
@@ -333,7 +334,7 @@ if __name__ == "__main__":
         classify_data(sys.argv[1])
 """
 
-    classifier_filename = 'HW_NN_Classifier_Le_Huy.py'
+    classifier_filename = 'HW_03_Classifier_Le_Huy.py'
     with open(classifier_filename, mode='w') as classifier_file:
         classifier_file.write(classifier_code)
         
