@@ -88,6 +88,9 @@ def main(): # The main function that orchestrates the training process and gener
     # Find out which class has fewer records
     minimum_class_size = min(len(aggressive_records), len(non_aggressive_records))
     
+    SEED=42 # we set a seed = 42 for reproducibility. This means every time we run the program, the random shuffle will be the same, and we will drop the same records to balanace the classes.
+    # Set a random seed so our random shuffle is the exact same every time
+    random.seed(SEED)
     # Shuffle the lists so we drop random records, not just the ones at the end
     random.shuffle(aggressive_records)
     random.shuffle(non_aggressive_records)

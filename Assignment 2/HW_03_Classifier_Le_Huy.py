@@ -52,7 +52,7 @@ def classify_data(input_filename):
             speed_val = int(float(current_row[speed_index])+0.5)
             
             # Apply the fixed threshold
-            if speed_val >= 62:
+            if speed_val >= 63:
                 guessed_intent = 2 # aggressive
             else:
                 guessed_intent = 1 # non-aggressive
