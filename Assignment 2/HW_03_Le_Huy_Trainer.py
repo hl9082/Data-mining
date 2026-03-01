@@ -4,14 +4,14 @@
 # Class: Data Mining
 # Purpose: This script acts as the "Trainer" or "Mentor" program. It reads in 
 #          training data, pre-quantizes the speed attribute, tests all possible 
-#          speed thresholds to find the lowest misclassification rate[cite: 140, 142], 
-#          plots an ROC curve, and automatically generates a 
+#          speed thresholds to find the lowest misclassification rate, 
+#          plots an ROC curve and scatterplot, and automatically generates a 
 #          standalone Classifier program.
 # =============================================================================
 
 import csv #we use the built-in csv module to read and write CSV files
 import glob #we use glob to find all CSV files in the Data folder
-import matplotlib.pyplot as plt #we use matplotlib to plot the ROC curve
+import matplotlib.pyplot as plt #we use matplotlib to plot the ROC curve and scatterplot
 import os
 import random #we use random to shuffle our data before balancing the classes
 import pandas as pd  #we use pandas to print out the confusion matrix
@@ -254,10 +254,34 @@ def main(): # The main function that orchestrates the training process and gener
     plt.grid(True)
     plt.show()
 
-    # Note: To create the scatter plot mentioned in Step 3, you'll need a second feature.
-    # The instructions recommend plotting every attribute vs every other attribute.
-    # plt.scatter(feature_x_list, feature_y_list) 
-    # plt.show()
+    # 2. Plot the Scatter Plot
+    print("Generating Scatter Plot...")
+    
+    # Add slight vertical "jitter" so the dots don't sit perfectly on top of each other
+    intent_1_y = [1 + random.uniform(-0.05, 0.05) for _ in balanced_non_aggressive]
+    intent_2_y = [2 + random.uniform(-0.05, 0.05) for _ in balanced_aggressive]
+    
+    plt.figure(figsize=(10, 6))
+    
+    # Plot the two classes using your exact balanced lists
+    plt.scatter(balanced_non_aggressive, intent_1_y, color='blue', label='Non-Aggressive (1)', alpha=0.3, edgecolors='none', s=30)
+    plt.scatter(balanced_aggressive, intent_2_y, color='red', label='Aggressive (2)', alpha=0.3, edgecolors='none', s=30)
+    
+    # Draw a vertical line for your dynamic best threshold
+    plt.axvline(x=best_speed_threshold, color='black', linestyle='--', linewidth=2, label=f'Optimal Threshold (>= {best_speed_threshold})')
+    
+    # Format the chart with titles and labels
+    plt.title('Scatter Plot of Driver Speed vs. Intent')
+    plt.xlabel('Quantized Speed (mph)')
+    plt.ylabel('Driver Intent (with slight vertical jitter)')
+    plt.yticks([1, 2], ['1 (Non-Aggressive)', '2 (Aggressive)'])
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    
+    # Save the image directly to your folder and then show it
+    plt.savefig('scatter_plot_le_huy.png', dpi=300, bbox_inches='tight')
+    print("Scatter plot successfully saved as 'scatter_plot_le_huy.png'!")
+    plt.show()
 
     # =========================================================================
     # STEP 3B: Generating the Classifier Program
