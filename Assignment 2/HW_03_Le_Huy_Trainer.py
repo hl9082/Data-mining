@@ -261,7 +261,7 @@ def main(): # The main function that orchestrates the training process and gener
     intent_1_y = [1 + random.uniform(-0.05, 0.05) for _ in balanced_non_aggressive]
     intent_2_y = [2 + random.uniform(-0.05, 0.05) for _ in balanced_aggressive]
     
-    plt.figure(figsize=(10, 6))
+    plt.figure(figsize=(10, 3))
     
     # Plot the two classes using your exact balanced lists
     plt.scatter(balanced_non_aggressive, intent_1_y, color='blue', label='Non-Aggressive (1)', alpha=0.3, edgecolors='none', s=30)
@@ -275,7 +275,7 @@ def main(): # The main function that orchestrates the training process and gener
     plt.xlabel('Quantized Speed (mph)')
     plt.ylabel('Driver Intent (with slight vertical jitter)')
     plt.yticks([1, 2], ['1 (Non-Aggressive)', '2 (Aggressive)'])
-    plt.legend()
+    plt.legend(loc='center right')
     plt.grid(True, alpha=0.3)
     
     # Save the image directly to your folder and then show it
