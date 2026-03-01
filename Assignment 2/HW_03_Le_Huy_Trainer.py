@@ -226,7 +226,7 @@ def main(): # The main function that orchestrates the training process and gener
     # Define the row labels
     row_labels = ['Actual: Aggressive (2)', 'Actual: Non-Aggressive (1)']
     
-    # Build the Pandas DataFrame
+    # Build the Pandas DataFrame to properly format the confusion matrix for display
     confusion_matrix_df = pd.DataFrame(matrix_data, index=row_labels)
     
     print("\n" + "="*60)
