@@ -1,11 +1,30 @@
 # =============================================================================
 # Program Name: HW_05_Classifier_Le_Huy.py
+# Author: Huy Le (hl9082)
 # Purpose: Auto-generated Decision Tree classifier for Abominable SnowFolk.
 # =============================================================================
 import csv
 import sys
 
 def classify_data(filename):
+    """
+    Reads validation data and classifies it using the hardcoded Decision Tree logic.
+
+    This function opens the specified CSV file, pre-quantizes the input features
+    (rounding to the nearest 2.0) exactly as they were pre-processed during training, 
+    and applies a series of auto-generated if/else statements to predict the 
+    specimen's class. The resulting classification (-1 for Assam, +1 for Bhuttan) 
+    is printed directly to standard output for each row.
+
+    Args:
+        filename (str): The relative or absolute path to the validation CSV file.
+
+    Returns:
+        None: Output is printed to stdout.
+
+    Raises:
+        SystemExit: If the provided filename does not exist.
+    """
     print(f"Reading and classifying data from: {filename}\n")
     
     try:
@@ -23,7 +42,7 @@ def classify_data(filename):
                 Reach = round(float(row['Reach']) / 2.0) * 2.0
                 EarLobes = round(float(row['EarLobes']) / 2.0) * 2.0
 
-                # --- AUTO-GENERATED DECISION TREE LOGIC ---
+                # --- DECISION TREE LOGIC ---
                 if BangLn <= 7.0:
                     if BangLn <= 5.0:
                         if HairLn <= 13.0:

@@ -1,5 +1,5 @@
 # =============================================================================
-# Program Name: HW_05_Le_Huy_DecisionTree_Trainer.py
+# Program Name: HW05_Le_Huy_DecisionTree.py
 # Author: Huy Le
 # Purpose: This script ingests training data for "Abominable SnowFolk", 
 #          pre-quantizes the continuous attributes to the nearest 2 values,
@@ -14,6 +14,22 @@ from sklearn.metrics import confusion_matrix, accuracy_score
 import sys
 
 def main():
+    """
+    Executes the main pipeline for the Decision Tree Trainer.
+
+    This function reads the training data, pre-quantizes the continuous features
+    to the nearest multiple of 2 (to reduce threshold search space), trains a 
+    scikit-learn DecisionTreeClassifier, and evaluates its performance by 
+    calculating the max depth, confusion matrix, and overall accuracy. Finally, 
+    it dynamically generates a standalone Python classifier script containing the 
+    exact decision tree logic via metaprogramming.
+
+    Args:
+        None
+
+    Returns:
+        None
+    """
     # =========================================================================
     # STEP 1: Data Ingestion
     # =========================================================================
@@ -74,6 +90,21 @@ def main():
     print("Generating standalone classifier program: HW_05_Classifier_Le_Huy.py...")
     
     def extract_tree_logic(node, depth):
+        """
+        Recursively traverses the trained Decision Tree to extract routing logic.
+
+        This function reads the internal arrays of a fitted scikit-learn
+        DecisionTreeClassifier (like tree_.feature and tree_.threshold) and 
+        generates equivalent Python if/else statements as formatted strings.
+
+        Args:
+            node (int): The current node index in the decision tree.
+            depth (int): The current indentation depth for formatting the Python code.
+
+        Returns:
+            str: A multi-line string containing the Python if/else logic for the
+                 current node and all of its recursive children. 
+        """
         indent = "    " * depth
         # If the node is not a leaf node (-2 is scikit-learn's leaf indicator)
         if clf.tree_.feature[node] != -2:
@@ -102,12 +133,31 @@ def main():
     # Now, we construct the full string of the new python file
     classifier_code = f"""# =============================================================================
 # Program Name: HW_05_Classifier_Le_Huy.py
+# Author: Huy Le (hl9082)
 # Purpose: Auto-generated Decision Tree classifier for Abominable SnowFolk.
 # =============================================================================
 import csv
 import sys
 
 def classify_data(filename):
+    \"\"\"
+    Reads validation data and classifies it using the hardcoded Decision Tree logic.
+
+    This function opens the specified CSV file, pre-quantizes the input features
+    (rounding to the nearest 2.0) exactly as they were pre-processed during training, 
+    and applies a series of auto-generated if/else statements to predict the 
+    specimen's class. The resulting classification (-1 for Assam, +1 for Bhuttan) 
+    is printed directly to standard output for each row.
+
+    Args:
+        filename (str): The relative or absolute path to the validation CSV file.
+
+    Returns:
+        None: Output is printed to stdout.
+
+    Raises:
+        SystemExit: If the provided filename does not exist.
+    \"\"\"
     print(f"Reading and classifying data from: {{filename}}\\n")
     
     try:
@@ -125,7 +175,7 @@ def classify_data(filename):
                 Reach = round(float(row['Reach']) / 2.0) * 2.0
                 EarLobes = round(float(row['EarLobes']) / 2.0) * 2.0
 
-                # --- AUTO-GENERATED DECISION TREE LOGIC ---
+                # --- DECISION TREE LOGIC ---
 {decision_logic}
                 # Print out the class value for each line of the test data file
                 print(predicted_class)
