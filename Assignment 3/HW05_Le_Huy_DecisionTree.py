@@ -7,10 +7,10 @@
 #          Classifier program using metaprogramming.
 # =============================================================================
 
-import pandas as pd
-import numpy as np
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import confusion_matrix, accuracy_score
+import pandas as pd # pandas is for data manipulation and analysis, so we use it to read CSV files and handle dataframes
+import numpy as np # numpy is to handle numerical operations, especially with arrays and matrices
+from sklearn.tree import DecisionTreeClassifier # DecisionTreeClassifier is a ML model to train a decision tree based on training data 
+from sklearn.metrics import confusion_matrix, accuracy_score # metrics are used to create the confusion matrix and calculate the overall accuracy score of the training itself
 
 def main():
     """
