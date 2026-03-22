@@ -94,7 +94,7 @@ def main():
     # =========================================================================
     y_pred_train = clf.predict(X_train) # use the trained model to predict class labels for training data
     cm = confusion_matrix(y_train, y_pred_train, labels=[-1, 1]) # compute the confusion matrix for the training data predictions
-    #use pandas to format the confusion matrix
+    #use pandas.dataframe to format the confusion matrix into tabular format
     cm_df = pd.DataFrame(cm, 
                          index=['Actual: Assam (-1)', 'Actual: Bhuttan (+1)'], 
                          columns=['Predicted: Assam (-1)', 'Predicted: Bhuttan (+1)'])
