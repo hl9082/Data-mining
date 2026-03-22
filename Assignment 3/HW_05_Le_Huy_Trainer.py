@@ -1,6 +1,6 @@
 # =============================================================================
-# Program Name: HW05_Le_Huy_DecisionTree.py
-# Author: Huy Le
+# Program Name: HW_05_Le_Huy_Trainer.py
+# Author: Huy Le (hl9082)
 # Purpose: This script ingests training data for "Abominable SnowFolk", 
 #          pre-quantizes the continuous attributes to the nearest 2 values,
 #          trains a Decision Tree, and dynamically GENERATES a standalone 
@@ -162,9 +162,9 @@ def main():
 # Author: Huy Le (hl9082)
 # Purpose: Auto-generated Decision Tree classifier for Abominable SnowFolk.
 # =============================================================================
-import csv
-import sys
-
+import csv # csv is used to read from and write to CSV files, which is how our validation data will be provided
+import sys # sys is used to handle command-line arguments and exit gracefully if there are issues with the file points
+ 
 def classify_data(filename):
     \"\"\"
     Reads validation data and classifies it using the hardcoded Decision Tree logic.
@@ -234,7 +234,7 @@ def classify_data(filename):
                 # Print out the class value for each line of the test data file
                 print(predicted_class)
                 
-    except FileNotFoundError:
+    except FileNotFoundError: # print the error and exit if we can't find the validation data
         print(f"ERROR: File '{{filename}}' not found.")
         sys.exit(1)
 
