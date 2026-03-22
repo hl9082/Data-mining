@@ -36,9 +36,9 @@ def main():
 
     print(f"Loading training data from {train_file}...")
     try:
-        train_df = pd.read_csv(train_file)
+        train_df = pd.read_csv(train_file) #Read a comma-separated values (csv) file into DataFrame
     except FileNotFoundError:
-        print(f"ERROR: Could not find {train_file}.")
+        print(f"ERROR: Could not find {train_file}.") #throw an error if we can't find the file
         return
 
     # Separate features from the target labels
@@ -53,7 +53,7 @@ def main():
     X_train_raw['Shagginess'] = X_train_raw['HairLn'] - X_train_raw['BangLn']
     X_train_raw['ApeFactor'] = X_train_raw['Reach'] - X_train_raw['Ht']
 
-    feature_names = list(X_train_raw.columns)
+    feature_names = list(X_train_raw.columns) # save the feature names for later use in the metaprogramming step
 
     # =========================================================================
     # STEP 2: Pre-Quantization
@@ -64,7 +64,8 @@ def main():
     # Save the original binary/categorical columns so they don't get squished
     earlobes_raw = X_train_raw['EarLobes']
 
-    X_train = (X_train_raw / 2.0).round() * 2.0
+    X_train = (X_train_raw / 2.0).round() * 2.0 #this line divides all values of X_train_raw by 2
+    # rounds the result to nearest number, then multiples by 2 to get the original scale but quantized to nearest 2.0
 
     # Restore the un-quantized EarLobes column
     X_train['EarLobes'] = earlobes_raw
@@ -75,7 +76,7 @@ def main():
     print("Training the Decision Tree Classifier...")
     # We initialize the scikit-learn model with the strictly required hyperparameters
     clf = DecisionTreeClassifier(
-        criterion='entropy',      # Use Average Entropy instead of Gini
+        criterion='entropy',      # Use Average Entropy as the splitting standard
         max_depth=5,              # Stop recursing at 5 levels of depth
         min_samples_split=23,     # Stop recursing if less than 23 points in a node
         min_samples_leaf=23,      # Minimum leaf node size is 23 records
@@ -85,15 +86,15 @@ def main():
     # The .fit() method mathematically 
     # builds the tree using the Entropy formulas
 
-    max_depth = clf.tree_.max_depth
+    max_depth = clf.tree_.max_depth # get the max depth of the trained tree
     print(f"\n-> MAXIMUM CALL DEPTH USED: {max_depth}")
 
     # =========================================================================
     # STEP 4: Evaluation and Confusion Matrix
     # =========================================================================
-    y_pred_train = clf.predict(X_train)
-    cm = confusion_matrix(y_train, y_pred_train, labels=[-1, 1])
-    
+    y_pred_train = clf.predict(X_train) # use the trained model to predict class labels for training data
+    cm = confusion_matrix(y_train, y_pred_train, labels=[-1, 1]) # compute the confusion matrix for the training data predictions
+    #use pandas to format the confusion matrix
     cm_df = pd.DataFrame(cm, 
                          index=['Actual: Assam (-1)', 'Actual: Bhuttan (+1)'], 
                          columns=['Predicted: Assam (-1)', 'Predicted: Bhuttan (+1)'])
@@ -103,7 +104,7 @@ def main():
     print("="*60)
     print(cm_df)
     
-    acc = accuracy_score(y_train, y_pred_train)
+    acc = accuracy_score(y_train, y_pred_train) #calcuate the overall accuracy of the model on the training data
     print(f"\nFinal Training Accuracy: {acc * 100:.2f}%\n")
 
     # =========================================================================
