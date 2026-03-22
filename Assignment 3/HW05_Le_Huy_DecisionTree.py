@@ -129,6 +129,7 @@ def main():
             str: A multi-line string containing the Python if/else logic for the
                  current node and all of its recursive children. 
         """
+        # indent is 4 spaces per level of depth for readability in the generated program
         indent = "    " * depth
         # If the node is not a leaf node (-2 is scikit-learn's leaf indicator)
         if clf.tree_.feature[node] != -2:
