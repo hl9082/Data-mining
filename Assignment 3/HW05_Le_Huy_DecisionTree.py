@@ -9,9 +9,8 @@
 
 import pandas as pd
 import numpy as np
-from sklearn.tree import DecisionTreeClassifier, export_text
+from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import confusion_matrix, accuracy_score
-import sys
 
 def main():
     """
@@ -43,6 +42,8 @@ def main():
         return
 
     # Separate features from the target labels
+    # We use the pandas .drop() function to completely remove the 
+    # target labels from our feature dataset so the model doesn't cheat.
     X_train_raw = train_df.drop(columns=['ClassName', 'ClassID'])
     y_train = train_df['ClassID']
     feature_names = list(X_train_raw.columns)
@@ -52,7 +53,14 @@ def main():
     # Rounding to the nearest multiple of 2 (round(value / 2.0) * 2.0)
     # =========================================================================
     print("Pre-quantizing continuous attributes to the nearest multiple of 2...")
+
+    # Save the original binary/categorical columns so they don't get squished
+    earlobes_raw = X_train_raw['EarLobes']
+
     X_train = (X_train_raw / 2.0).round() * 2.0
+
+    # Restore the un-quantized EarLobes column
+    X_train['EarLobes'] = earlobes_raw
 
     # =========================================================================
     # STEP 3: Train the Decision Tree Classifier
@@ -60,6 +68,8 @@ def main():
     print("Training the Decision Tree Classifier...")
     clf = DecisionTreeClassifier(random_state=42)
     clf.fit(X_train, y_train)
+    # The scikit-learn .fit() method mathematically 
+    # builds the decision tree by calculating Gini impurity to find the best thresholds.
 
     max_depth = clf.tree_.max_depth
     print(f"\n-> MAXIMUM CALL DEPTH USED: {max_depth}")
@@ -123,7 +133,7 @@ def main():
             class_index = np.argmax(clf.tree_.value[node])
             predicted_class = clf.classes_[class_index]
             
-            # Add a comment so the grader knows what class this is
+            # Add a comment so we know what class this is
             class_name = "Assam" if predicted_class == -1 else "Bhuttan"
             return f"{indent}predicted_class = {predicted_class} # {class_name}\n"
 
@@ -162,6 +172,8 @@ def classify_data(filename):
     
     try:
         with open(filename, mode='r') as file:
+        # csv.DictReader reads the file line-by-line and maps each value to its column header name, 
+        # allowing us to access data via row['Age']
             csv_reader = csv.DictReader(file)
             
             for row in csv_reader:
@@ -173,9 +185,19 @@ def classify_data(filename):
                 HairClr = round(float(row['HairClr']) / 2.0) * 2.0
                 BangLn = round(float(row['BangLn']) / 2.0) * 2.0
                 Reach = round(float(row['Reach']) / 2.0) * 2.0
-                EarLobes = round(float(row['EarLobes']) / 2.0) * 2.0
+                EarLobes = int(row['EarLobes']) 
 
                 # --- DECISION TREE LOGIC ---
+                # 
+                # HOW IT WORKS:
+                # 1. The Trainer fit a scikit-learn DecisionTreeClassifier to the training data.
+                # 2. A recursive function traversed the tree's internal 
+                #    arrays.
+                # 3. At each node, it extracted the optimal threshold (based on Gini Impurity or 
+                #    Information Gain) and dynamically wrote the corresponding Python 'if' statement.
+                # 4. If the data failed the threshold, it wrote the 'else' statement.
+                # 5. When it reached a pure leaf node, it assigned the predicted_class variable
+                #    (-1 for Assam, +1 for Bhuttan).
 {decision_logic}
                 # Print out the class value for each line of the test data file
                 print(predicted_class)
@@ -192,7 +214,7 @@ if __name__ == "__main__":
         classify_data(sys.argv[1])
 """
 
-    # Write out the new python file
+    # Write out the python code for the classifier program
     with open('HW_05_Classifier_Le_Huy.py', 'w') as f:
         f.write(classifier_code)
         
