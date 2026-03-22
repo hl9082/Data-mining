@@ -239,10 +239,10 @@ def classify_data(filename):
         sys.exit(1)
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
+    if len(sys.argv) < 2: # if no data file is provided, print usage instruction and exit
         print("Usage: python HW_05_Classifier_Le_Huy.py <ValidationData.csv>")
     else:
-        classify_data(sys.argv[1])
+        classify_data(sys.argv[1]) # call the classify_data function with the provided filename as a command-line argument
 """
 
     # Write out the python code for the classifier program
