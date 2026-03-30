@@ -12,12 +12,43 @@ import numpy as np
 import time
 
 def calculate_euclidean_distance(centroid_a, centroid_b):
-    """Calculates the Euclidean distance between two cluster centroids."""
+    """
+    Calculates the Euclidean distance between two cluster centroids.
+    
+    Args:
+        centroid_a (numpy.ndarray): An array representing the center of mass 
+            (average attributes) of the first cluster.
+        centroid_b (numpy.ndarray): An array representing the center of mass 
+            (average attributes) of the second cluster.
+
+    Returns:
+        float: The exact Euclidean distance between the two centroids.
+
+    """
     # numpy.linalg.norm computes the exact Euclidean distance formula
     return np.linalg.norm(centroid_a - centroid_b)
 
 def run_custom_agglomeration(csv_filename):
-    """Runs agglomerative clustering from scratch without using ML packages."""
+    """
+    This function iteratively groups records by finding the two active clusters 
+    with the shortest Euclidean distance between their centers of mass. It merges 
+    them, calculates the new center of mass via a weighted average, and records 
+    the size of the smaller merged cluster. The loop continues until all records 
+    are grouped into a single root cluster.
+
+    Args:
+        csv_filename (str): The file path to the CSV dataset containing the 
+            shopping cart data.
+
+    Returns:
+        None: The function prints progress updates and the sizes of the smallest clusters during the last 20 merges 
+        directly to the console.
+
+    Raises:
+        FileNotFoundError: If the specified CSV file cannot be found in the 
+            current directory.
+
+    """
     print(f"Loading {csv_filename}...")
     df = pd.read_csv(csv_filename)
     
@@ -123,8 +154,8 @@ def run_custom_agglomeration(csv_filename):
     # -------------------------------------------------------------------------
     # The assignment asks for the smallest sizes of the LAST 20 merges
     last_20_sizes = merge_history_smallest_sizes[-20:]
-    print("\n--- HOMEWORK ANSWERS ---")
+    
     print(f"Sizes of the smallest clusters in the last 20 merges:\n{last_20_sizes}")
 
 if __name__ == "__main__":
-    run_custom_agglomeration('HW_CLUSTERING_SHOPPING_CART_v2255a.csv')
+    run_custom_agglomeration('Data/HW_CLUSTERING_SHOPPING_CART_v2255a.csv')
