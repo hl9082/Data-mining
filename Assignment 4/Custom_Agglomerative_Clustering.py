@@ -30,11 +30,10 @@ def calculate_euclidean_distance(centroid_a, centroid_b):
 
 def run_custom_agglomeration(csv_filename):
     """
-    This function iteratively groups records by finding the two active clusters 
-    with the shortest Euclidean distance between their centers of mass. It merges 
-    them, calculates the new center of mass via a weighted average, and records 
-    the size of the smaller merged cluster. The loop continues until all records 
-    are grouped into a single root cluster.
+    This function heavily optimizes runtime by computing an initial distance 
+    matrix (cache). In each iteration, it finds the closest clusters in O(1) 
+    dictionary lookups, merges them via a weighted average, and only computes 
+    new distances for the newly formed cluster.
 
     Args:
         csv_filename (str): The file path to the CSV dataset containing the 
@@ -50,7 +49,11 @@ def run_custom_agglomeration(csv_filename):
 
     """
     print(f"Loading {csv_filename}...")
-    df = pd.read_csv(csv_filename)
+    try:
+        df = pd.read_csv(csv_filename)
+    except FileNotFoundError:
+        print(f"ERROR: Could not find '{csv_filename}'.")
+        raise
     
     # Drop identifier columns (The Trap!)
     id_cols = ['Guest ID', 'Record ID', 'GuestID', 'RecordID', 'ID']
@@ -77,46 +80,35 @@ def run_custom_agglomeration(csv_filename):
             'members': [index]          # Tracks which original rows are in this cluster
         }
     
+    # Build the initial distance cache
+    print("Building initial distance matrix (this takes a few seconds)...")
+    distance_cache = {}
+    cluster_ids = list(active_clusters.keys())
+    
+    for i in range(len(cluster_ids)):
+        for j in range(i + 1, len(cluster_ids)):
+            id_a, id_b = cluster_ids[i], cluster_ids[j]
+            dist = calculate_euclidean_distance(active_clusters[id_a]['centroid'], 
+                                                active_clusters[id_b]['centroid'])
+            distance_cache[(id_a, id_b)] = dist
+
     next_cluster_id = total_records
     merge_history_smallest_sizes = []
     
-    print(f"Starting Agglomeration Loop with {len(active_clusters)} clusters...")
+    print(f"Starting Optimized Agglomeration Loop with {len(active_clusters)} clusters...")
     start_time = time.time()
     
     # -------------------------------------------------------------------------
     # STEP 2: The Main Agglomeration Loop
-    # Continue merging until only 1 single root cluster remains
     # -------------------------------------------------------------------------
     while len(active_clusters) > 1:
-        minimum_distance = float('inf')
-        cluster_pair_to_merge = (None, None)
+        # Find the minimum distance instantly using python's highly optimized min() function
+        (id_a, id_b) = min(distance_cache.items(), key=lambda item: item[1])
         
-        # Extract the current active cluster IDs and their centroids to avoid dictionary overhead in the loop
-        cluster_ids = list(active_clusters.keys())
-        
-        # Find the closest pair of clusters
-        for i in range(len(cluster_ids)):
-            for j in range(i + 1, len(cluster_ids)):
-                id_a = cluster_ids[i]
-                id_b = cluster_ids[j]
-                
-                dist = calculate_euclidean_distance(
-                    active_clusters[id_a]['centroid'], 
-                    active_clusters[id_b]['centroid']
-                )
-                
-                if dist < minimum_distance:
-                    minimum_distance = dist
-                    cluster_pair_to_merge = (id_a, id_b)
-        
-        # -------------------------------------------------------------------------
-        # STEP 3: The Merge and Center of Mass Update
-        # -------------------------------------------------------------------------
-        id_a, id_b = cluster_pair_to_merge
         cluster_a = active_clusters[id_a]
         cluster_b = active_clusters[id_b]
         
-        # Record the size of the smaller cluster being merged (for the homework requirement)
+        # Record the size of the smaller cluster being merged
         smaller_size = min(cluster_a['size'], cluster_b['size'])
         merge_history_smallest_sizes.append(smaller_size)
         
@@ -125,7 +117,6 @@ def run_custom_agglomeration(csv_filename):
         new_centroid = ((cluster_a['centroid'] * cluster_a['size']) + 
                         (cluster_b['centroid'] * cluster_b['size'])) / total_size
         
-        # Combine the member lists
         combined_members = cluster_a['members'] + cluster_b['members']
         
         # Create the new merged cluster
@@ -135,14 +126,30 @@ def run_custom_agglomeration(csv_filename):
             'members': combined_members
         }
         
-        # Remove the old, now-merged clusters
+        # Remove the old clusters from the active dictionary
         del active_clusters[id_a]
         del active_clusters[id_b]
         
-        # Increment our ID counter for the next merge
+        # -------------------------------------------------------------------------
+        # STEP 3: Cache Maintenance (The Optimization Secret)
+        # -------------------------------------------------------------------------
+        # Remove all old distances involving id_a or id_b from the cache
+        keys_to_delete = [k for k in distance_cache if id_a in k or id_b in k]
+        for k in keys_to_delete:
+            del distance_cache[k]
+            
+        # Calculate distances from the ONE new cluster to the remaining active clusters
+        for existing_id in active_clusters:
+            if existing_id != next_cluster_id:
+                dist = calculate_euclidean_distance(active_clusters[next_cluster_id]['centroid'], 
+                                                    active_clusters[existing_id]['centroid'])
+                
+                # Always store the smaller ID first to maintain consistent tuple keys
+                key = (min(existing_id, next_cluster_id), max(existing_id, next_cluster_id))
+                distance_cache[key] = dist
+                
         next_cluster_id += 1
         
-        # Print a progress update every 100 merges so we know it hasn't frozen
         if len(active_clusters) % 100 == 0:
             print(f"Clusters remaining: {len(active_clusters)}...")
 
@@ -152,9 +159,8 @@ def run_custom_agglomeration(csv_filename):
     # -------------------------------------------------------------------------
     # STEP 4: Reporting the results for the Write-Up
     # -------------------------------------------------------------------------
-    # The assignment asks for the smallest sizes of the LAST 20 merges
     last_20_sizes = merge_history_smallest_sizes[-20:]
-    
+     
     print(f"Sizes of the smallest clusters in the last 20 merges:\n{last_20_sizes}")
 
 if __name__ == "__main__":
