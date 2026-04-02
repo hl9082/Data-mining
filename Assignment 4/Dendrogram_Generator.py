@@ -7,9 +7,9 @@ Purpose: Analyzes supermarket shopping cart data to visualize the inherent
 =============================================================================
 """
 
-import pandas as pd
-import matplotlib.pyplot as plt
-from scipy.cluster.hierarchy import dendrogram, linkage
+import pandas as pd # to read .csv file
+import matplotlib.pyplot as plt #to plot the dendrogram
+from scipy.cluster.hierarchy import dendrogram, linkage # to compute the Euclidean distance between 2 clusters and to determine the shape of the Dendrogram
 
 def generate_dendrogram(csv_filename):
     """Generates and saves a hierarchical clustering dendrogram from a CSV dataset.
@@ -36,8 +36,7 @@ def generate_dendrogram(csv_filename):
     print(f"Loading {csv_filename}...")
     df = pd.read_csv(csv_filename)
     
-    # 2. CRITICAL TRAP: Drop the Guest ID / Record ID column!
-    # The professor explicitly warned not to include this in calculations.
+    # 2. CRITICAL TRAP: Drop the ID column!
     id_cols = ['Guest ID', 'Record ID', 'GuestID', 'RecordID', 'ID']
     for col in id_cols:
         if col in df.columns:
@@ -66,7 +65,7 @@ def generate_dendrogram(csv_filename):
         leaf_rotation=90.,
         leaf_font_size=12.,
         show_leaf_counts=True,  # Shows the number of items in each cluster
-        show_contracted=True
+        show_contracted=True # heights of non-singleton nodes contracted into a leaf node are plotted as crosses along the link connecting that leaf node
     )
     
     plt.tight_layout()

@@ -7,9 +7,9 @@ Purpose: Implements Agglomerative Clustering entirely from scratch using the
 =============================================================================
 """
 
-import pandas as pd
-import numpy as np
-import time
+import pandas as pd #for reading .csv dataset
+import numpy as np #NumPy to calculate Euclidean distance between 2 clusters
+import time # the time it takes to do the agglomeration algorithm
 
 def calculate_euclidean_distance(centroid_a, centroid_b):
     """
@@ -50,6 +50,7 @@ def run_custom_agglomeration(csv_filename):
             current directory.
 
     """
+    #reading the .csv file
     print(f"Loading {csv_filename}...")
     try:
         df = pd.read_csv(csv_filename)
@@ -66,7 +67,7 @@ def run_custom_agglomeration(csv_filename):
             
     # Convert to a numpy array for faster mathematical operations
     dataset = df.to_numpy()
-    total_records = len(dataset)
+    total_records = len(dataset) #number of records in the dataset
     
     # -------------------------------------------------------------------------
     # STEP 1: Initialization
@@ -83,31 +84,34 @@ def run_custom_agglomeration(csv_filename):
         }
     
     
-    merge_history_smallest_sizes = []
+    merge_history_smallest_sizes = [] # To track the size of the smaller cluster in each merge for reporting purposes
     
     print(f"Starting Optimized Agglomeration Loop with {len(active_clusters)} clusters...")
-    start_time = time.time()
+    start_time = time.time() #starting agglomeration time
     
     # -------------------------------------------------------------------------
     # STEP 2: The Main Agglomeration Loop
     # -------------------------------------------------------------------------
     while len(active_clusters) > 1:
-        minimum_distance = float('inf')
-        cluster_pair_to_merge = (None, None)
+        minimum_distance = float('inf') #to get minimum Euclidean distance
+        cluster_pair_to_merge = (None, None) #the pair of clusters to merge
         
-        cluster_ids = list(active_clusters.keys())
+        cluster_ids = list(active_clusters.keys()) #list of cluster ids
         
         # Avoid comparing a cluster to itself by starting j at i + 1
         for i in range(len(cluster_ids)):
             for j in range(i + 1, len(cluster_ids)):
+                # ids of cluster i and cluster j+1
                 id_a = cluster_ids[i]
                 id_b = cluster_ids[j]
                 
+                #calculate the euclidean distance between 2 clusters
                 dist = calculate_euclidean_distance(
                     active_clusters[id_a]['centroid'], 
                     active_clusters[id_b]['centroid']
-                )
+                ) 
                 
+                #get the minimum Euclidean distance with the corresponding pair of clusters
                 if dist < minimum_distance:
                     minimum_distance = dist
                     cluster_pair_to_merge = (id_a, id_b)
@@ -147,13 +151,13 @@ def run_custom_agglomeration(csv_filename):
         if len(active_clusters) % 100 == 0:
             print(f"Clusters remaining: {len(active_clusters)}...")
 
-    end_time = time.time()
+    end_time = time.time() #ending agglomeration time
     print(f"\nClustering complete in {round(end_time - start_time, 2)} seconds!")
     
     # -------------------------------------------------------------------------
     # STEP 4: Reporting the results for the Write-Up
     # -------------------------------------------------------------------------
-    last_20_sizes = merge_history_smallest_sizes[-20:]
+    last_20_sizes = merge_history_smallest_sizes[-20:] # sizes of the last 20 clusters
 
     print(f"Final surviving cluster ID: {list(active_clusters.keys())[0]}")
      
