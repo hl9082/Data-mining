@@ -30,10 +30,12 @@ def calculate_euclidean_distance(centroid_a, centroid_b):
 
 def run_custom_agglomeration(csv_filename):
     """
-    This function heavily optimizes runtime by computing an initial distance 
-    matrix (cache). In each iteration, it finds the closest clusters in O(1) 
-    dictionary lookups, merges them via a weighted average, and only computes 
-    new distances for the newly formed cluster.
+    This function iteratively groups records by finding the two active clusters 
+    with the shortest Euclidean distance. This algorithm intentionally avoids 
+    distance caching and recomputes all inter-cluster distances on every pass. When two clusters 
+    merge, the newly formed cluster inherits the lowest integer ID of its 
+    parents, ensuring the final remaining cluster is labeled with the 
+    lowest possible starting ID.
 
     Args:
         csv_filename (str): The file path to the CSV dataset containing the 
@@ -80,19 +82,7 @@ def run_custom_agglomeration(csv_filename):
             'members': [index]          # Tracks which original rows are in this cluster
         }
     
-    # Build the initial distance cache
-    print("Building initial distance matrix (this takes a few seconds)...")
-    distance_cache = {}
-    cluster_ids = list(active_clusters.keys())
     
-    for i in range(len(cluster_ids)):
-        for j in range(i + 1, len(cluster_ids)):
-            id_a, id_b = cluster_ids[i], cluster_ids[j]
-            dist = calculate_euclidean_distance(active_clusters[id_a]['centroid'], 
-                                                active_clusters[id_b]['centroid'])
-            distance_cache[(id_a, id_b)] = dist
-
-    next_cluster_id = total_records
     merge_history_smallest_sizes = []
     
     print(f"Starting Optimized Agglomeration Loop with {len(active_clusters)} clusters...")
@@ -102,9 +92,30 @@ def run_custom_agglomeration(csv_filename):
     # STEP 2: The Main Agglomeration Loop
     # -------------------------------------------------------------------------
     while len(active_clusters) > 1:
-        # Find the minimum distance instantly using python's highly optimized min() function
-        (id_a, id_b) = min(distance_cache.items(), key=lambda item: item[1])
+        minimum_distance = float('inf')
+        cluster_pair_to_merge = (None, None)
         
+        cluster_ids = list(active_clusters.keys())
+        
+        # Avoid comparing a cluster to itself by starting j at i + 1
+        for i in range(len(cluster_ids)):
+            for j in range(i + 1, len(cluster_ids)):
+                id_a = cluster_ids[i]
+                id_b = cluster_ids[j]
+                
+                dist = calculate_euclidean_distance(
+                    active_clusters[id_a]['centroid'], 
+                    active_clusters[id_b]['centroid']
+                )
+                
+                if dist < minimum_distance:
+                    minimum_distance = dist
+                    cluster_pair_to_merge = (id_a, id_b)
+        
+        # -------------------------------------------------------------------------
+        # STEP 3: Merge and ID Preservation
+        # -------------------------------------------------------------------------
+        id_a, id_b = cluster_pair_to_merge
         cluster_a = active_clusters[id_a]
         cluster_b = active_clusters[id_b]
         
@@ -119,37 +130,20 @@ def run_custom_agglomeration(csv_filename):
         
         combined_members = cluster_a['members'] + cluster_b['members']
         
-        # Create the new merged cluster
-        active_clusters[next_cluster_id] = {
+        # The lowest cluster label must persist!
+        persisting_id = min(id_a, id_b)
+        deleted_id = max(id_a, id_b)
+        
+        # Update the persisting cluster with the new merged data
+        active_clusters[persisting_id] = {
             'centroid': new_centroid,
             'size': total_size,
             'members': combined_members
         }
         
-        # Remove the old clusters from the active dictionary
-        del active_clusters[id_a]
-        del active_clusters[id_b]
-        
-        # -------------------------------------------------------------------------
-        # STEP 3: Cache Maintenance (The Optimization Secret)
-        # -------------------------------------------------------------------------
-        # Remove all old distances involving id_a or id_b from the cache
-        keys_to_delete = [k for k in distance_cache if id_a in k or id_b in k]
-        for k in keys_to_delete:
-            del distance_cache[k]
-            
-        # Calculate distances from the ONE new cluster to the remaining active clusters
-        for existing_id in active_clusters:
-            if existing_id != next_cluster_id:
-                dist = calculate_euclidean_distance(active_clusters[next_cluster_id]['centroid'], 
-                                                    active_clusters[existing_id]['centroid'])
-                
-                # Always store the smaller ID first to maintain consistent tuple keys
-                key = (min(existing_id, next_cluster_id), max(existing_id, next_cluster_id))
-                distance_cache[key] = dist
-                
-        next_cluster_id += 1
-        
+        # Delete the higher ID cluster since it was absorbed into the smaller ID
+        del active_clusters[deleted_id]
+        # Print progress update every 100 merges so the user knows it hasn't frozen
         if len(active_clusters) % 100 == 0:
             print(f"Clusters remaining: {len(active_clusters)}...")
 
@@ -160,6 +154,8 @@ def run_custom_agglomeration(csv_filename):
     # STEP 4: Reporting the results for the Write-Up
     # -------------------------------------------------------------------------
     last_20_sizes = merge_history_smallest_sizes[-20:]
+
+    print(f"Final surviving cluster ID: {list(active_clusters.keys())[0]}")
      
     print(f"Sizes of the smallest clusters in the last 20 merges:\n{last_20_sizes}")
 
