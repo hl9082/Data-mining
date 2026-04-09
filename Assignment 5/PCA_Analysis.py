@@ -13,6 +13,30 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 def run_pca_phase_1(csv_filename: str) -> None:
+    """
+    Performs Principal Component Analysis (PCA) on a given shopping cart dataset.
+    
+    This function executes the first phase of the PCA and K-Means pipeline. It loads 
+    the dataset, identifies and removes any ID-related columns to prevent them from 
+    skewing the mathematical calculations, and computes the covariance matrix. It 
+    then extracts the eigenvalues and eigenvectors, sorts them in descending order 
+    to identify the primary principal components, and calculates the Cumulative 
+    Variance Accounted For (VAF). Finally, it generates and saves a dual-pane figure 
+    containing a Scree Plot and a Cumulative VAF plot.
+
+    Args:
+        csv_filename (str): The file path to the CSV dataset containing the 
+            shopping cart data (e.g., 'HW_CLUSTERING_SHOPPING_CART_v2255f.csv').
+
+    Returns:
+        None: The function does not return any variables. It outputs statistical 
+        findings directly to the console (including the number of components 
+        required to reach 90% VAF) and saves a high-resolution PNG image 
+        ('PCA_Scree_and_VAF.png') to the current working directory.
+        
+    Raises:
+        FileNotFoundError: If the specified CSV file cannot be found.
+    """
     print(f"Loading {csv_filename}...")
     df = pd.read_csv(csv_filename)
     
@@ -37,7 +61,7 @@ def run_pca_phase_1(csv_filename: str) -> None:
     # which mathematically guarantees real (non-complex) eigenvalues.
     eigenvalues, eigenvectors = np.linalg.eigh(cov_matrix)
     
-    # By default, eigh sorts ascending. We must reverse them so the 
+    # By default, np.argsort sorts ascending. We must reverse them so the 
     # largest eigenvalues (Principal Components) are first.
     idx = np.argsort(eigenvalues)[::-1]
     eigenvalues = eigenvalues[idx]
