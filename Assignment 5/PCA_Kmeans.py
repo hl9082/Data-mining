@@ -60,10 +60,18 @@ def run_kmeans_in_pca_space(csv_filename: str, k: int = 4) -> None:
     # random_state ensures we get the exact same clusters every time we run the script
     kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
     df_pca['Cluster'] = kmeans.fit_predict(df_pca[['PC1', 'PC2']])
+
+    print("Eigenvector 1 (PC1):")
+    # We use [:, 0] to get the first column, and tolist() to print it flat
+    print(np.round(eigenvectors[:, 0], 3).tolist())
+    
+    print("\nEigenvector 2 (PC2):")
+    # We use [:, 1] to get the second column
+    print(np.round(eigenvectors[:, 1], 3).tolist())
     
     # 6. Extract and Print the 2D Centers of Mass
     centers_2d = kmeans.cluster_centers_
-    print("\n--- HOMEWORK ANSWER (QUESTION 7) ---")
+    # print("\n--- HOMEWORK ANSWER (QUESTION 7) ---")
     print("2D Centers of Mass for the 4 Clusters:")
     for i, center in enumerate(centers_2d):
         print(f"Cluster {i+1}: X (PC1) = {center[0]:.2f}, Y (PC2) = {center[1]:.2f}")
