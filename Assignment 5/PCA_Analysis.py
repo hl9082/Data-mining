@@ -8,8 +8,20 @@ Purpose: Performs Principal Component Analysis (PCA) on shopping cart data.
 =============================================================================
 """
 
+# Pandas is the industry standard for tabular data manipulation in Python. 
+# Across this assignment, we use it to easily load the shopping cart CSV 
+# file into a "DataFrame", clean the data, and efficiently filter out 
+# unwanted "ID" columns before running any mathematical operations.
 import pandas as pd
+# NumPy is Python's core library for numerical computing and linear algebra. 
+# We use it extensively in this project to handle complex math that standard 
+# Python cannot do natively, such as computing the covariance matrix, extracting 
+# eigenvalues/eigenvectors, and performing matrix dot-product projections.
 import numpy as np
+# The assignment requires us to generate visualizations (like the cumulative 
+# sum of normalized eigenvalues and a 2D scatter plot) without using 
+# proprietary software. Matplotlib is an open-source Python plotting 
+# library that perfectly handles these required visual outputs.
 import matplotlib.pyplot as plt
 
 def run_pca_phase_1(csv_filename: str) -> None:

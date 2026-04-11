@@ -7,8 +7,18 @@ Purpose: Re-projects the 2D K-Means centers back into the original 20D space
 =============================================================================
 """
 
+# Pandas is the industry standard for tabular data manipulation in Python. 
+# Across this assignment, we use it to easily load the shopping cart CSV 
+# file into a "DataFrame", clean the data, and efficiently filter out 
+# unwanted "ID" columns before running any mathematical operations.
 import pandas as pd
+# NumPy is Python's core library for numerical computing and linear algebra. 
+# We use it extensively in this project to handle complex math that standard 
+# Python cannot do natively, such as computing the covariance matrix, extracting 
+# eigenvalues/eigenvectors, and performing matrix dot-product projections.
 import numpy as np
+# Scikit-learn is the most robust machine learning package in Python, and its KMeans module 
+# allows us to easily compute our shopper clusters using Euclidean distances.
 from sklearn.cluster import KMeans
 
 def run_pca_reconstruction(csv_filename: str) -> None:

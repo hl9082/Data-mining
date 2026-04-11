@@ -7,9 +7,31 @@ Purpose: Projects 20D shopping cart data down to 2D PCA space, runs K-Means
 =============================================================================
 """
 
+# WHY WE USE PANDAS: 
+# Pandas is the industry standard for tabular data manipulation in Python. 
+# Across this assignment, we use it to easily load the shopping cart CSV 
+# file into a "DataFrame", clean the data, and efficiently filter out 
+# unwanted "ID" columns before running any mathematical operations.
 import pandas as pd
+
+# WHY WE USE NUMPY:
+# NumPy is Python's core library for numerical computing and linear algebra. 
+# We use it extensively in this project to handle complex math that standard 
+# Python cannot do natively, such as computing the covariance matrix, extracting 
+# eigenvalues/eigenvectors, and performing matrix dot-product projections.
 import numpy as np
+
+# WHY WE USE MATPLOTLIB:
+# The assignment requires us to generate visualizations (like the cumulative 
+# sum of normalized eigenvalues and a 2D scatter plot) without using 
+# proprietary software. Matplotlib is an open-source Python plotting 
+# library that perfectly handles these required visual outputs.
 import matplotlib.pyplot as plt
+
+# WHY WE USE SCIKIT-LEARN (KMeans):
+# Scikit-learn is 
+# the most robust machine learning package in Python, and its KMeans module 
+# allows us to easily compute our shopper clusters using Euclidean distances.
 from sklearn.cluster import KMeans
 
 def run_kmeans_in_pca_space(csv_filename: str, k: int = 4) -> None:
@@ -30,10 +52,15 @@ def run_kmeans_in_pca_space(csv_filename: str, k: int = 4) -> None:
         None: Outputs the 2D vectors directly to the console and saves a 
         scatter plot ('KMeans_PCA_2D.png') locally.
     """
+    # Read the CSV file into a Pandas DataFrame.
     print(f"Loading {csv_filename}...")
     df = pd.read_csv(csv_filename)
     
     # 1. Drop the ID column
+    # The dataset contains ID columns (like Guest ID) which are not grocery attributes.
+    # If we leave them in, the math will treat the ID number as a purchase amount!
+    # We use a list comprehension to find any column with 'ID', 'GUEST', or 'RECORD' 
+    # in its name, and drop them so we are left with a purely 20x20 attribute space.
     id_cols = [col for col in df.columns if 'ID' in col.upper() or 'GUEST' in col.upper() or 'RECORD' in col.upper()]
     df_clean = df.drop(columns=id_cols)
     
@@ -61,6 +88,7 @@ def run_kmeans_in_pca_space(csv_filename: str, k: int = 4) -> None:
     kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
     df_pca['Cluster'] = kmeans.fit_predict(df_pca[['PC1', 'PC2']])
 
+    #printing out top 2 eigenvectors
     print("Eigenvector 1 (PC1):")
     # We use [:, 0] to get the first column, and tolist() to print it flat
     print(np.round(eigenvectors[:, 0], 3).tolist())
