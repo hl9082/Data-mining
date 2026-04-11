@@ -84,6 +84,14 @@ def run_pca_phase_1(csv_filename: str) -> None:
     # -------------------------------------------------------------------------
     # STEP 5: Generate the Scree Plot and VAF Plot
     # -------------------------------------------------------------------------
+    # WHY WE USE BOTH: The assignment requires plotting the cumulative sum 
+    # of the normalized eigenvalues (VAF) to see how many components are needed 
+    # to reach 1.0 (100% variance). However, we are also plotting a standard 
+    # "Scree Plot" (the raw/normalized eigenvalues dropping off). 
+    # We use the Scree Plot because it allows us to visually find the "elbow" 
+    # (the point of diminishing returns), which is the industry standard method 
+    # for deciding exactly how many principal components to keep!
+    # -------------------------------------------------------------------------
     print("\nGenerating Plots...")
     plt.figure(figsize=(14, 5))
     
